@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Star Nations — Lute pela Ordem e Progresso</title>
+<link rel="preconnect" href="https://rxsvqblovrwaoszimvcp.supabase.co" crossorigin>
+<link rel="preconnect" href="https://servicodados.ibge.gov.br" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#070b16;--card:#101830;--card2:#162241;--line:#24345f;--tx:#e8edfb;--mu:#8e9bc0;--g:#18c78b;--b:#3b82f6;--y:#f5c542;--r:#ef4444}
+*{box-sizing:border-box;margin:0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--tx);background:radial-gradient(900px 500px at 15% -10%,#1a3a8f55,transparent),radial-gradient(800px 500px at 100% 10%,#18c78b33,transparent),var(--bg);min-height:100vh;line-height:1.5}
+#app{max-width:1000px;margin:0 auto;padding:20px 16px 60px;animation:fade .5s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.brand{font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(90deg,var(--g),var(--y),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px;gap:10px;flex-wrap:wrap}
+.hero{text-align:center;padding:50px 0 26px}
+.hero h1{font-size:clamp(2.2rem,7vw,3.8rem)}
+.hero p{color:var(--mu);margin-top:8px;font-size:1.1rem}
+.card{background:linear-gradient(160deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 10px 40px #0006}
+.narrow{max-width:420px;margin:0 auto}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.mode{cursor:pointer;transition:.25s;position:relative;overflow:hidden}
+.mode:hover{transform:translateY(-4px);border-color:var(--g)}
+.mode .ic{font-size:2rem}.mode h3{margin:8px 0 4px}.mode p{color:var(--mu);font-size:.92rem}
+label{display:block;font-size:.82rem;color:var(--mu);margin:12px 0 4px}
+input,select,textarea{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:#0a1126;color:var(--tx);font:inherit}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--b);border-color:transparent}
+textarea{resize:vertical;min-height:80px}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:11px 18px;font-weight:600;color:#04130d;background:linear-gradient(90deg,var(--g),#5eead4);transition:.2s}
+button:hover{filter:brightness(1.1);transform:translateY(-1px)}
+button.sec{background:#1b2a52;color:var(--tx);border:1px solid var(--line)}
+button.dng{background:#3a1520;color:#fecaca;border:1px solid #7f1d1d}
+button.full{width:100%;margin-top:18px}
+.tabs{display:flex;gap:6px;margin-bottom:6px}.tabs button{flex:1}
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>*{flex:1;min-width:180px}
+.muted{color:var(--mu);font-size:.9rem}
+.av{width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--g);background:linear-gradient(135deg,var(--b),var(--g));display:flex;align-items:center;justify-content:center;font-size:2.4rem;font-weight:800;flex:none}
+.prof{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:20px}
+.stat{background:#0a1126aa;border:1px solid var(--line);border-radius:14px;padding:14px}
+.stat b{display:block;font-size:1.3rem}.stat span{color:var(--mu);font-size:.8rem}
+.tag{display:inline-block;padding:3px 10px;border-radius:99px;font-size:.78rem;background:#18c78b22;color:var(--g);border:1px solid #18c78b55;margin:2px 4px 2px 0}
+.tag.b{background:#3b82f622;color:#93c5fd;border-color:#3b82f655}
+.list>div{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;cursor:pointer;border:1px solid transparent}
+.list>div:hover{background:#ffffff0a;border-color:var(--line)}
+.list .av{width:44px;height:44px;font-size:1rem;border-width:2px}
+.clock{background:#0a1126;border:1px solid var(--line);padding:6px 14px;border-radius:99px;font-size:.85rem}
+.modal{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;padding:16px;z-index:9;animation:fade .2s}
+.modal .card{width:100%;max-width:440px;max-height:90vh;overflow:auto}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111c38;border:1px solid var(--line);padding:12px 20px;border-radius:12px;z-index:20;display:none;max-width:90vw}
+
+/* fundo dinâmico: para usar uma foto sua, defina --bgimg: url("https://...") */
+:root{--bgimg: url("https://upload.wikimedia.org/wikipedia/commons/9/9d/Fachada_do_Congresso_Nacional_%2852232492084%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original")}
+#bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+#bg::before{content:"";position:absolute;inset:-25%;background:radial-gradient(40% 40% at 25% 30%,#18c78b2e,transparent 70%),radial-gradient(35% 35% at 78% 25%,#3b82f633,transparent 70%),radial-gradient(35% 35% at 60% 80%,#f5c54226,transparent 70%);animation:drift 28s ease-in-out infinite alternate;will-change:transform}
+#bg::after{content:"";position:absolute;inset:0;background-image:radial-gradient(1px 1px at 20px 30px,#fff9,transparent),radial-gradient(1.5px 1.5px at 90px 80px,#fff7,transparent),radial-gradient(1px 1px at 160px 20px,#9cf9,transparent),radial-gradient(1px 1px at 130px 110px,#fff6,transparent);background-size:200px 130px;opacity:.5;animation:stars 90s linear infinite}
+#bg i{position:absolute;inset:0;background:var(--bgimg) center/cover no-repeat;opacity:.13;mix-blend-mode:luminosity}
+@keyframes drift{to{transform:translate3d(6%,4%,0) scale(1.12)}}
+@keyframes stars{to{background-position:-200px 130px}}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes pop{from{opacity:0;transform:scale(.93) translateY(8px)}to{opacity:1;transform:none}}
+@keyframes sp{to{transform:rotate(360deg)}}
+@keyframes shine{to{background-position:200% 0}}
+.brand{background-size:200% 100%;animation:shine 8s linear infinite}
+.grid>.card{animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
+.grid>.card:nth-child(2){animation-delay:.08s}.grid>.card:nth-child(3){animation-delay:.16s}
+.list>div{animation:rise .45s cubic-bezier(.2,.7,.2,1) both;transition:background .2s,border-color .2s,transform .2s}
+.list>div:hover{transform:translateX(4px)}
+.list>div:nth-child(2){animation-delay:.04s}.list>div:nth-child(3){animation-delay:.08s}.list>div:nth-child(4){animation-delay:.12s}.list>div:nth-child(5){animation-delay:.16s}.list>div:nth-child(n+6){animation-delay:.2s}
+button{transition:transform .15s,filter .2s,box-shadow .25s,background .2s}
+button:hover{box-shadow:0 6px 22px #18c78b40}button.sec:hover{box-shadow:0 6px 18px #3b82f633}button:active{transform:scale(.96)}
+button:disabled{opacity:.6;pointer-events:none}
+.mode::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,#ffffff12,transparent 70%);transform:translateX(-100%);transition:transform .7s}.mode:hover::after{transform:translateX(100%)}
+.mode .ic{display:inline-block;transition:transform .3s}.mode:hover .ic{transform:scale(1.2) rotate(-6deg)}
+.stat{transition:.2s}.stat:hover{transform:translateY(-3px);border-color:var(--g)}
+.av{transition:transform .3s}.prof:hover .av{transform:scale(1.06)}
+.modal .card{animation:pop .28s cubic-bezier(.2,.9,.3,1.15)}
+#toast{animation:rise .3s}
+input,select,textarea{transition:border-color .2s,box-shadow .2s}
+.ld{display:flex;flex-direction:column;align-items:center;gap:14px;padding:100px 0;color:var(--mu)}
+.ld i{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--g);border-radius:50%;animation:sp .7s linear infinite}
+.auth{display:grid;grid-template-columns:1.15fr 1fr;gap:40px;align-items:center;min-height:82vh}
+.auth .side h1{font-size:clamp(2.2rem,5.5vw,3.6rem);line-height:1.1;margin:14px 0}
+.auth .lead{font-size:1.05rem;max-width:460px}
+.feat{list-style:none;padding:0;margin-top:24px;display:grid;gap:12px}
+.feat li{display:flex;gap:12px;align-items:center;color:#cfd8f3}.feat b{width:38px;height:38px;border-radius:10px;background:#ffffff0d;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:400}
+.auth .card h2{margin-bottom:2px}.auth .card{padding:30px;backdrop-filter:blur(6px)}
+.auth a{color:var(--g);text-decoration:none;font-weight:600}.auth a:hover{text-decoration:underline}
+.pwr{display:flex;gap:8px}.pwr button{padding:0 14px}
+.snd{position:fixed;top:14px;right:14px;z-index:5;padding:8px 12px}
+@media(max-width:800px){.auth{grid-template-columns:1fr;gap:24px;min-height:auto;padding-top:30px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="bg"><i></i></div>
+<div id="app"></div>
+<div id="toast"></div>
+<script>
+const SB = supabase.createClient("https://rxsvqblovrwaoszimvcp.supabase.co","sb_publishable_L0ibaeqDHLTVJqfsXmC-Mw_HME6YOx5");
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const brl = n => Number(n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const IDEO = {"extrema-esquerda":"Extrema-esquerda","esquerda":"Esquerda","centro-esquerda":"Centro-esquerda","centro":"Centro","centro-direita":"Centro-direita","direita":"Direita","extrema-direita":"Extrema-direita"};
+const AXIS = {"extrema-esquerda":-9,"esquerda":-6,"centro-esquerda":-3,"centro":0,"centro-direita":3,"direita":6,"extrema-direita":9};
+const PROF = {ativista:"Ativista",empresario:"Empresário(a)",sindicalista:"Sindicalista",jurista:"Jurista",militar:"Militar",religioso:"Líder religioso",academico:"Acadêmico(a)",comunicador:"Comunicador(a)",servidor_publico:"Servidor(a) público(a)",profissional_saude:"Profissional da saúde",agricultor:"Agricultor(a)",outro:"Outro"};
+const opts = (o,sel) => Object.entries(o).map(([k,v])=>`<option value="${k}" ${k===sel?"selected":""}>${esc(v)}</option>`).join("");
+
+let user = null, world = null, me = null, states = [];
+const CITY = {};
+const SND=(()=>{let ctx,on=true;try{on=localStorage.getItem("sn_snd")!=="0"}catch{}
+ function tone(f,d=.12,type="sine",v=.05,t0=0,slide=0){if(!on)return;try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==="suspended")ctx.resume();const o=ctx.createOscillator(),g=ctx.createGain(),t=ctx.currentTime+t0;o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(f*slide,t+d);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+d+.03)}catch{}}
+ return{get on(){return on},toggle(){on=!on;try{localStorage.setItem("sn_snd",on?"1":"0")}catch{}if(on)this.ok();return on},
+  click(){tone(520,.07,"triangle",.04,0,1.5)},hover(){tone(880,.035,"sine",.01)},open(){tone(380,.16,"sine",.04,0,1.7)},
+  ok(){[523,659,784].forEach((f,i)=>tone(f,.28,"sine",.05,i*.09))},err(){tone(190,.22,"sawtooth",.035,0,.6)},
+  welcome(){[392,523,659,784,1047].forEach((f,i)=>tone(f,.9,"sine",.03,i*.14))}}})();
+function bindSnd(){const b=$("#snd");if(!b)return;const f=()=>b.textContent=SND.on?"🔊":"🔇";f();b.onclick=()=>{SND.toggle();f()}}
+const loading=t=>`<div class="ld"><i></i><span>${esc(t||"Carregando...")}</span></div>`;
+function fmtGame(){const w=world,d=new Date(w.start_game_date+"T12:00:00");d.setDate(d.getDate()+Math.floor((Date.now()-new Date(w.started_at))/864e5*365/Number(w.year_real_days)));return d.toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"})}
+
+
+function toast(m,ok){ok===true?SND.ok():SND.err();const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(t._t);t._t=setTimeout(()=>t.style.display="none",4000)}
+function view(h){$("#app").innerHTML=h;window.scrollTo(0,0)}
+function avatar(c,cls=""){return c.photo_url?`<img class="av ${cls}" src="${esc(c.photo_url)}" alt="">`:`<div class="av ${cls}">${esc(c.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}
+function modal(title,body,onOk,okLabel="Confirmar"){
+  SND.open();const m=document.createElement("div");m.className="modal";
+  m.innerHTML=`<div class="card"><h3>${title}</h3>${body}<div class="row" style="margin-top:18px"><button class="sec" id="mc">Cancelar</button><button id="mo">${okLabel}</button></div></div>`;
+  document.body.appendChild(m);
+  m.querySelector("#mc").onclick=()=>m.remove();
+  m.querySelector("#mo").onclick=async()=>{try{await onOk(m);m.remove()}catch(e){toast(e.message)}};
+}
+
+/* ---------- LOGIN ---------- */
+function authView(signup=false){
+  view(`<button class="sec snd" id="snd" title="Som"></button><div class="auth"><div class="side"><div class="brand" style="font-size:.85rem;letter-spacing:.2em">★ STAR NATIONS</div><h1>Lute pela<br><span class="brand">Ordem e Progresso.</span></h1><p class="muted lead">Simulador político do Brasil. Construa sua carreira, funde movimentos e partidos, dispute eleições e governe junto com seus amigos.</p><ul class="feat"><li><b>🏛️</b> Eleições, Congresso e Executivo</li><li><b>🌎</b> Multiplayer global ou servidores privados</li><li><b>📊</b> Perfil público e métricas de cada jogador</li></ul></div>
+  <div class="card"><h2>${signup?"Criar conta":"Entrar"}</h2><p class="muted">${signup?"Use um e-mail válido e uma senha exclusiva para o site.":"Acesse sua conta para continuar."}</p>
+  <label>E-mail</label><input id="em" type="email" autocomplete="email" placeholder="voce@gmail.com">
+  <label>Senha</label><div class="pwr"><input id="pw" type="password" autocomplete="${signup?"new-password":"current-password"}" placeholder="${signup?"Mínimo de 6 caracteres":"Sua senha"}"><button type="button" class="sec" id="eye" aria-label="Mostrar senha">👁</button></div>
+  <button class="full" id="go">${signup?"Criar conta":"Entrar"}</button>
+  <p class="muted" style="text-align:center;margin-top:16px">${signup?"Já tem uma conta?":"Ainda não tem conta?"} <a href="#" id="sw">${signup?"Entrar":"Criar conta"}</a></p></div></div>`);
+  bindSnd();
+  $("#sw").onclick=e=>{e.preventDefault();authView(!signup)};
+  $("#eye").onclick=()=>{const p=$("#pw");p.type=p.type==="password"?"text":"password"};
+  const go=async()=>{
+    const email=$("#em").value.trim(),password=$("#pw").value;
+    if(!email||password.length<6)return toast("Informe e-mail e senha (mín. 6 caracteres).");
+    const bt=$("#go");bt.disabled=true;bt.textContent="Aguarde...";
+    const r=signup?await SB.auth.signUp({email,password,options:{emailRedirectTo:location.href.split("#")[0]}}):await SB.auth.signInWithPassword({email,password});
+    if(r.error){bt.disabled=false;bt.textContent=signup?"Criar conta":"Entrar";return toast(r.error.message.includes("Invalid login")?"E-mail ou senha incorretos (ou e-mail ainda não confirmado).":r.error.message)}
+    if(signup&&!r.data.session){bt.disabled=false;bt.textContent="Criar conta";toast("Conta criada! Confirme pelo e-mail que enviamos e depois entre.",true)}
+  };
+  $("#go").onclick=go;["#em","#pw"].forEach(q=>$(q).onkeydown=e=>{if(e.key==="Enter")go()});
+}
+
+/* ---------- HUB ---------- */
+let _back=null;
+function header(extra="",back=null){_back=back;return `<div class="top"><div style="display:flex;align-items:center;gap:12px">${back?`<button class="sec" id="back">← Voltar</button>`:""}<div class="brand" style="cursor:pointer" id="home">★ Star Nations</div></div><div class="row" style="flex:none;align-items:center">${extra}<button class="sec" id="snd" title="Som"></button><button class="sec" id="out">Sair</button></div></div>`}
+function bindHeader(){bindSnd();if(_back&&$("#back"))$("#back").onclick=_back;$("#home").onclick=hub;$("#out").onclick=()=>SB.auth.signOut()}
+function hub(){
+  world=null;me=null;
+  view(header()+`<div class="hero" style="padding-top:10px"><h1 class="brand">Escolha seu caminho</h1><p>Como você quer jogar?</p></div>
+  <div class="grid">
+   <div class="card mode" id="m1"><div class="ic">🎯</div><h3>Singleplayer</h3><p>Jogue sozinho com NPCs. Seu próprio Brasil, no seu ritmo.</p></div>
+   <div class="card mode" id="m2"><div class="ic">🏛️</div><h3>Servers</h3><p>Crie ou entre em servidores abertos ou com senha, só com seus amigos.</p></div>
+   <div class="card mode" id="m3"><div class="ic">🌎</div><h3>Multiplayer Global</h3><p>O Brasil aberto a todos. Crie movimentos e partidos de verdade.</p></div>
+  </div>`);
+  bindHeader();
+  $("#m1").onclick=async()=>{view(loading("Carregando seu mundo..."));
+    let {data}=await SB.from("worlds").select("*").eq("mode","single").eq("owner_id",user.id).limit(1);
+    if(!data?.length){const r=await SB.rpc("create_world",{p_name:"Meu Brasil",p_description:"Singleplayer",p_mode:"single"});if(r.error)return toast(r.error.message);data=(await SB.from("worlds").select("*").eq("id",r.data)).data}
+    enter(data[0]);
+  };
+  $("#m2").onclick=servers;
+  $("#m3").onclick=async()=>{view(loading("Entrando no Brasil..."));const {data}=await SB.from("worlds").select("*").eq("mode","global").limit(1);data?.length?enter(data[0]):toast("Mundo global não encontrado.")};
+}
+
+async function servers(){
+  view(loading("Buscando servidores..."));
+  const [{data},{data:mine}]=await Promise.all([SB.from("worlds").select("*").eq("mode","server").order("created_at",{ascending:false}),SB.from("world_members").select("world_id").eq("user_id",user.id)]);
+  const mySet=new Set((mine||[]).map(x=>x.world_id));
+  view(header(`<button id="cs">+ Criar servidor</button>`,hub)+`<h2 class="brand">Servidores</h2><div class="card list" style="margin-top:14px">${
+    (data||[]).map(w=>`<div data-id="${w.id}"><div style="flex:1"><b>${w.is_private?"🔒":"🌐"} ${esc(w.name)}</b><div class="muted">${esc(w.description||"Sem descrição")} · 1 ano = ${w.year_real_days} dias</div></div><button class="sec">Entrar</button></div>`).join("")||`<p class="muted" style="padding:12px">Nenhum servidor ainda. Crie o primeiro!</p>`}</div>`);
+  bindHeader();
+  $("#cs").onclick=()=>modal("Criar servidor",`<label>Nome</label><input id="sn" maxlength="60"><label>Descrição</label><textarea id="sd" maxlength="500"></textarea><label>Senha (deixe vazio para servidor aberto)</label><input id="sp" type="text"><label>Duração de 1 ano de jogo</label><select id="sy"><option value="7">7 dias reais</option><option value="14" selected>14 dias reais</option><option value="28">28 dias reais</option></select>`,async m=>{
+    const r=await SB.rpc("create_world",{p_name:m.querySelector("#sn").value,p_description:m.querySelector("#sd").value,p_mode:"server",p_password:m.querySelector("#sp").value||null,p_year_real_days:+m.querySelector("#sy").value});
+    if(r.error)throw r.error;const w=(await SB.from("worlds").select("*").eq("id",r.data)).data[0];setTimeout(()=>enter(w),50);
+  },"Criar");
+  document.querySelectorAll(".list [data-id]").forEach(el=>el.onclick=async()=>{
+    const w=data.find(x=>x.id===el.dataset.id);
+    if(mySet.has(w.id))return enter(w);
+    const join=async pw=>{const r=await SB.rpc("join_world",{p_world:w.id,p_password:pw||null});if(r.error)throw r.error;enter(w)};
+    w.is_private?modal("Servidor com senha",`<label>Senha</label><input id="jp" type="password">`,m=>join(m.querySelector("#jp").value),"Entrar"):join();
+  });
+}
+
+/* ---------- PERSONAGEM ---------- */
+async function enter(w){
+  world=w;view(loading("Entrando no mundo..."));
+  const {data}=await SB.from("characters").select("*").eq("world_id",w.id).eq("user_id",user.id).limit(1);
+  me=data?.[0]||null;
+  me?profile(me):creator();
+}
+async function creator(){
+  if(!states.length)states=(await SB.from("states").select("*").order("name")).data||[];
+  view(header("",hub)+`<h2 class="brand">Crie seu personagem</h2><p class="muted">Mundo: ${esc(world.name)}</p>
+  <div class="card" style="margin-top:14px"><div class="row"><div><label>Nome completo</label><input id="fn" maxlength="80"></div><div><label>Foto (opcional, até 2 MB)</label><input id="ph" type="file" accept="image/png,image/jpeg,image/webp"></div></div>
+  <label>Descrição</label><textarea id="ds" maxlength="500" placeholder="Sua história, valores e bandeiras..."></textarea>
+  <div class="row"><div><label>Ideologia</label><select id="id">${opts(IDEO,"centro")}</select></div><div><label>Perfil político</label><select id="pf">${opts(PROF,"ativista")}</select></div></div>
+  <div class="row"><div><label>Estado inicial</label><select id="uf"><option value="">Selecione...</option>${states.map(s=>`<option value="${s.uf}">${esc(s.name)}</option>`).join("")}</select></div><div><label>Cidade inicial</label><select id="ct" disabled><option>Escolha o estado primeiro</option></select></div></div>
+  <button class="full" id="sv">Começar minha jornada</button></div>`);
+  bindHeader();
+  $("#uf").onchange=async e=>{
+    const ct=$("#ct");ct.disabled=true;ct.innerHTML="<option>Carregando...</option>";
+    try{const uf=e.target.value;const j=CITY[uf]||(CITY[uf]=await (await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`)).json());
+      ct.innerHTML=j.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join("");ct.disabled=false}catch{ct.innerHTML="<option>Erro ao carregar</option>"}
+  };
+  $("#sv").onclick=async()=>{
+    const fn=$("#fn").value.trim(),uf=$("#uf").value,ct=$("#ct");
+    if(fn.length<3||!uf||ct.disabled)return toast("Preencha nome, estado e cidade.");
+    $("#sv").disabled=true;let photo_url=null;const f=$("#ph").files[0];
+    if(f){if(f.size>2097152){$("#sv").disabled=false;return toast("Foto maior que 2 MB.")}
+      const path=`${user.id}/${Date.now()}.${f.type.split("/")[1]}`;const up=await SB.storage.from("avatars").upload(path,f);
+      if(up.error){$("#sv").disabled=false;return toast("Falha na foto: "+up.error.message)}
+      photo_url=SB.storage.from("avatars").getPublicUrl(path).data.publicUrl}
+    const ideo=$("#id").value;
+    const r=await SB.from("characters").insert({user_id:user.id,world_id:world.id,full_name:fn,description:$("#ds").value.trim()||null,photo_url,ideology:ideo,econ_axis:AXIS[ideo],social_axis:AXIS[ideo],political_profile:$("#pf").value,state_uf:uf,city_ibge_id:+ct.value,city_name:ct.options[ct.selectedIndex].text}).select().single();
+    if(r.error){$("#sv").disabled=false;return toast(r.error.message)}
+    SND.ok();me=r.data;profile(me);
+  };
+}
+
+function profile(c){
+  const mine=c.user_id===user.id;
+  const date=fmtGame();
+  view(header(`<span class="clock" id="clk">📅 ${esc(date)}</span>`,mine?hub:()=>people())+`<div class="card"><div class="prof">${avatar(c)}<div style="flex:1;min-width:200px">
+   <h2>${esc(c.full_name)}</h2><div style="margin:6px 0"><span class="tag">${esc(c.role==="cidadao"?"Cidadão":c.role)}</span><span class="tag b">${esc(IDEO[c.ideology])}</span><span class="tag b">${esc(PROF[c.political_profile])}</span></div>
+   <div class="muted">📍 ${esc(c.city_name)} — ${esc(c.state_uf)}</div></div></div>
+   <p style="margin-top:16px">${esc(c.description||"Sem descrição.")}</p>
+   <div class="stats"><div class="stat"><b>${brl(c.salary)}</b><span>Salário mensal</span></div><div class="stat"><b>${brl(c.money)}</b><span>Dinheiro</span></div><div class="stat"><b>${c.supporters.toLocaleString("pt-BR")}</b><span>Apoiadores</span></div><div class="stat"><b>${c.reputation}/100</b><span>Reputação</span></div></div>
+   <div class="row" style="margin-top:20px">${mine?"":`<button class="dng" id="rp">Denunciar perfil</button>`}<button class="sec" id="pp">👥 Ver cidadãos do mundo</button>${mine?"":`<button id="bk">Meu perfil</button>`}</div></div>
+   <p class="muted" style="margin-top:14px;text-align:center">Mundo: ${esc(world.name)} · Em breve: partidos, movimentos, manifestações e eleições.</p>`);
+  bindHeader();
+  $("#pp").onclick=()=>people();clearInterval(window._ck);window._ck=setInterval(()=>{const e=$("#clk");if(e)e.textContent="📅 "+fmtGame()},30000);
+  if($("#bk"))$("#bk").onclick=()=>profile(me);
+  if($("#rp"))$("#rp").onclick=()=>modal("Denunciar perfil",`<label>Motivo</label><textarea id="rs" maxlength="500"></textarea>`,async m=>{
+    const r=await SB.from("reports").insert({reporter_id:user.id,character_id:c.id,reason:m.querySelector("#rs").value.trim()});
+    if(r.error)throw new Error("Descreva o motivo (mín. 5 caracteres).");toast("Denúncia enviada. Obrigado!",true)},"Enviar");
+}
+
+async function people(q=""){
+  let req=SB.from("characters").select("*").eq("world_id",world.id).order("supporters",{ascending:false}).limit(50);
+  if(q)req=req.ilike("full_name",`%${q}%`);
+  const {data}=await req;
+  view(header("",()=>profile(me))+`<h2 class="brand">Cidadãos</h2><input id="sq" placeholder="Buscar por nome..." value="${esc(q)}" style="margin:14px 0">
+  <div class="card list">${(data||[]).map(c=>`<div data-id="${c.id}">${avatar(c)}<div style="flex:1"><b>${esc(c.full_name)}</b><div class="muted">${esc(c.city_name)}/${esc(c.state_uf)} · ${esc(IDEO[c.ideology])}</div></div><span class="muted">${c.supporters} apoiadores</span></div>`).join("")||`<p class="muted" style="padding:12px">Ninguém encontrado.</p>`}</div>`);
+  bindHeader();
+  $("#sq").onkeydown=e=>{if(e.key==="Enter")people(e.target.value.trim())};
+  document.querySelectorAll(".list [data-id]").forEach(el=>el.onclick=()=>profile(data.find(x=>x.id===el.dataset.id)));
+}
+
+/* ---------- SONS E INÍCIO ---------- */
+let _w=false;addEventListener("pointerdown",()=>{if(!_w&&!user){_w=true;SND.welcome()}});
+document.addEventListener("click",e=>{if(e.target.closest("button,.mode,.list>div,a"))SND.click()});
+let _h=0;document.addEventListener("mouseover",e=>{const t=e.target.closest(".mode,button");if(t&&t!==window._ht&&Date.now()-_h>90){window._ht=t;_h=Date.now();SND.hover()}});
+document.addEventListener("mouseout",()=>{window._ht=null});
+SB.auth.onAuthStateChange((ev,s)=>{
+  const u=s?.user||null;
+  if(u&&(!user||user.id!==u.id)){user=u;SND.ok();hub();SB.from("states").select("*").order("name").then(r=>{if(r.data)states=r.data})}
+  else if(!u){user=null;authView()}
+});
+SB.auth.getSession().then(({data})=>{if(!data.session)authView()});
+</script>
+</body>
+</html>
