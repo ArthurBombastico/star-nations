@@ -181,12 +181,13 @@ async function servers(){
   const [{data},{data:mine}]=await Promise.all([SB.from("worlds").select("*").eq("mode","server").order("created_at",{ascending:false}),SB.from("world_members").select("world_id").eq("user_id",user.id)]);
   const mySet=new Set((mine||[]).map(x=>x.world_id));
   view(header(`<button id="cs">+ Criar servidor</button>`,hub)+`<h2 class="brand">Servidores</h2><div class="card list" style="margin-top:14px">${
-    (data||[]).map(w=>`<div data-id="${w.id}"><div style="flex:1"><b>${w.is_private?"🔒":"🌐"} ${esc(w.name)}</b><div class="muted">${esc(w.description||"Sem descrição")} · 1 ano = ${w.year_real_days} dias</div></div><button class="sec">Entrar</button></div>`).join("")||`<p class="muted" style="padding:12px">Nenhum servidor ainda. Crie o primeiro!</p>`}</div>`);
+    (data||[]).map(w=>`<div data-id="${w.id}"><div style="flex:1"><b>${w.is_private?"🔒":"🌐"} ${esc(w.name)}</b><div class="muted">${esc(w.description||"Sem descrição")} · 1 ano = ${w.year_real_days} dias</div></div>${w.owner_id===user.id?`<button class="sec" data-mg="${w.id}" title="Gerenciar">⚙️</button>`:""}<button class="sec">Entrar</button></div>`).join("")||`<p class="muted" style="padding:12px">Nenhum servidor ainda. Crie o primeiro!</p>`}</div>`);
   bindHeader();
   $("#cs").onclick=()=>modal("Criar servidor",`<label>Nome</label><input id="sn" maxlength="60"><label>Descrição</label><textarea id="sd" maxlength="500"></textarea><label>Senha (deixe vazio para servidor aberto)</label><input id="sp" type="text"><label>Duração de 1 ano de jogo</label><select id="sy"><option value="7">7 dias reais</option><option value="14" selected>14 dias reais</option><option value="28">28 dias reais</option></select>`,async m=>{
     const r=await SB.rpc("create_world",{p_name:m.querySelector("#sn").value,p_description:m.querySelector("#sd").value,p_mode:"server",p_password:m.querySelector("#sp").value||null,p_year_real_days:+m.querySelector("#sy").value});
     if(r.error)throw r.error;const w=(await SB.from("worlds").select("*").eq("id",r.data)).data[0];setTimeout(()=>enter(w),50);
   },"Criar");
+  document.querySelectorAll("[data-mg]").forEach(b=>b.onclick=e=>{e.stopPropagation();SND.click();world=data.find(x=>x.id===b.dataset.mg);me=null;manage()});
   document.querySelectorAll(".list [data-id]").forEach(el=>el.onclick=async()=>{
     const w=data.find(x=>x.id===el.dataset.id);
     if(mySet.has(w.id))return enter(w);
@@ -198,8 +199,8 @@ async function servers(){
 /* ---------- PERSONAGEM ---------- */
 async function enter(w){
   world=w;view(loading("Entrando no mundo..."));
-  const {data}=await SB.from("characters").select("*").eq("world_id",w.id).eq("user_id",user.id).limit(1);
-  me=data?.[0]||null;
+  const r=await SB.rpc("settle_me",{p_world:w.id});
+  me=r.data?.id?r.data:null;
   me?profile(me):creator();
 }
 async function creator(){
@@ -232,17 +233,17 @@ async function creator(){
 }
 
 function profile(c){
-  const mine=c.user_id===user.id;
+  const mine=c.user_id===user.id,owner=world.mode==="server"&&world.owner_id===user.id;
   const date=fmtGame();
   view(header(`<span class="clock" id="clk">📅 ${esc(date)}</span>`,mine?hub:()=>people())+`<div class="card"><div class="prof">${avatar(c)}<div style="flex:1;min-width:200px">
    <h2>${esc(c.full_name)}</h2><div style="margin:6px 0"><span class="tag">${esc(c.role==="cidadao"?"Cidadão":c.role)}</span><span class="tag b">${esc(IDEO[c.ideology])}</span><span class="tag b">${esc(PROF[c.political_profile])}</span></div>
    <div class="muted">📍 ${esc(c.city_name)} — ${esc(c.state_uf)}</div></div></div>
    <p style="margin-top:16px">${esc(c.description||"Sem descrição.")}</p>
-   <div class="stats"><div class="stat"><b>${brl(c.salary)}</b><span>Salário mensal</span></div><div class="stat"><b>${brl(c.money)}</b><span>Dinheiro</span></div><div class="stat"><b>${c.supporters.toLocaleString("pt-BR")}</b><span>Apoiadores</span></div><div class="stat"><b>${c.reputation}/100</b><span>Reputação</span></div></div>
-   <div class="row" style="margin-top:20px">${mine?"":`<button class="dng" id="rp">Denunciar perfil</button>`}<button class="sec" id="pp">👥 Ver cidadãos do mundo</button>${mine?"":`<button id="bk">Meu perfil</button>`}</div></div>
+   <div class="stats"><div class="stat"><b>${brl(c.salary)}</b><span>Salário mensal</span></div><div class="stat"><b>${brl(c.money)}</b><span>Dinheiro</span></div><div class="stat"><b>${c.supporters.toLocaleString("pt-BR")}</b><span>Apoiadores</span></div><div class="stat"><b>${c.reputation}/100</b><span>Reputação</span></div><div class="stat"><b>${brl(c.expenses)}</b><span>Gastos mensais</span></div><div class="stat"><b>${brl(c.salary-c.expenses)}</b><span>Saldo por mês de jogo</span></div></div>
+   <div class="row" style="margin-top:20px">${mine?"":`<button class="dng" id="rp">Denunciar perfil</button>`}${owner?`<button class="sec" id="mg">⚙️ Gerenciar servidor</button>`:""}${mine?`<button class="sec" id="fin">💰 Finanças</button>`:""}<button class="sec" id="pp">👥 Ver cidadãos do mundo</button>${mine?"":`<button id="bk">Meu perfil</button>`}</div>${mine?actPanel():""}</div>
    <p class="muted" style="margin-top:14px;text-align:center">Mundo: ${esc(world.name)} · Em breve: partidos, movimentos, manifestações e eleições.</p>`);
   bindHeader();
-  $("#pp").onclick=()=>people();clearInterval(window._ck);window._ck=setInterval(()=>{const e=$("#clk");if(e)e.textContent="📅 "+fmtGame()},30000);
+  $("#pp").onclick=()=>people();if($("#mg"))$("#mg").onclick=manage;if($("#fin"))$("#fin").onclick=finance;if(mine)bindActions();clearInterval(window._ck);window._ck=setInterval(()=>{const e=$("#clk");if(e)e.textContent="📅 "+fmtGame()},30000);
   if($("#bk"))$("#bk").onclick=()=>profile(me);
   if($("#rp"))$("#rp").onclick=()=>modal("Denunciar perfil",`<label>Motivo</label><textarea id="rs" maxlength="500"></textarea>`,async m=>{
     const r=await SB.from("reports").insert({reporter_id:user.id,character_id:c.id,reason:m.querySelector("#rs").value.trim()});
@@ -258,6 +259,75 @@ async function people(q=""){
   bindHeader();
   $("#sq").onkeydown=e=>{if(e.key==="Enter")people(e.target.value.trim())};
   document.querySelectorAll(".list [data-id]").forEach(el=>el.onclick=()=>profile(data.find(x=>x.id===el.dataset.id)));
+}
+
+/* ---------- AÇÕES DO CIDADÃO ---------- */
+const ACT={
+ trabalhar:["💼","Horas extras","Renda extra de trabalho.","+ cerca de 10% do salário",1],
+ panfletar:["📣","Panfletagem","Converse com moradores e conquiste apoio.","- R$ 50 · + apoiadores",1],
+ debate:["🗣️","Debate nas redes","Defenda suas ideias online.","+ apoiadores · risco à reputação",1],
+ doacao:["🤝","Pedir doações","Arrecade com quem apoia você. Poucos apoiadores = risco de constrangimento.","Depende de apoiadores e reputação",6],
+ evento:["🎤","Apresentação / evento","Palestra, show ou ato público. Pode lucrar ou fracassar.","Custa R$ 80 · lucro, apoio e reputação variam",3]};
+const actPanel=()=>`<h3 style="margin:28px 0 12px">Ações do cidadão</h3><div class="grid">${Object.entries(ACT).map(([k,a])=>`<div class="stat"><b>${a[0]} ${a[1]}</b><span>${a[2]}</span><div class="muted" style="margin:6px 0 4px">${a[3]}</div><div class="muted" style="margin-bottom:10px">Recarga: ${a[4]} h</div><button data-act="${k}" style="width:100%">Executar</button></div>`).join("")}</div>`;
+async function bindActions(){
+  document.querySelectorAll("[data-act]").forEach(b=>b.onclick=async()=>{
+    b.disabled=true;
+    const r=await SB.rpc("do_action",{p_world:world.id,p_action:b.dataset.act});
+    if(r.error){b.disabled=false;return toast(r.error.message)}
+    me=r.data.character;toast(r.data.msg,true);profile(me);
+  });
+  const {data}=await SB.from("action_log").select("action,created_at").eq("character_id",me.id).gte("created_at",new Date(Date.now()-6*36e5).toISOString());
+  const seen={};
+  (data||[]).sort((x,y)=>new Date(y.created_at)-new Date(x.created_at)).forEach(l=>{
+    if(seen[l.action]||!ACT[l.action])return;seen[l.action]=1;
+    const left=ACT[l.action][4]*36e5-(Date.now()-new Date(l.created_at));
+    const b=document.querySelector(`[data-act="${l.action}"]`);
+    if(b&&left>0){b.disabled=true;b.textContent=`Disponível em ${Math.max(1,Math.ceil(left/6e4))} min`}
+  });
+}
+
+/* ---------- FINANÇAS ---------- */
+const INV={renda_fixa:["🏦","Tesouro Selic","Renda fixa, risco baixíssimo. Cerca de 12% ao ano."],fii:["🏢","Fundos imobiliários","Rendimento de aluguéis. Risco moderado."],acoes:["📈","Ações (B3)","Bolsa de valores. Alto risco e alto retorno."],cripto:["🪙","Criptoativos","Muito volátil. Pode perder quase tudo."]};
+const COST=[["🏠 Moradia",.38],["🍽️ Alimentação",.25],["🚌 Transporte",.12],["💊 Saúde",.08],["📚 Educação",.07],["🎬 Lazer e outros",.10]];
+const dshort=d=>new Date(d+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"});
+async function finance(){
+  view(loading("Abrindo suas finanças..."));
+  const rr=await SB.rpc("settle_me",{p_world:world.id});if(rr.data?.id)me=rr.data;
+  const [{data:inv},{data:led},{data:roles}]=await Promise.all([
+    SB.from("investments").select("*").eq("character_id",me.id),
+    SB.from("ledger").select("*").eq("character_id",me.id).order("created_at",{ascending:false}).order("month_idx",{ascending:false}).limit(25),
+    SB.from("role_salaries").select("*").order("sort")]);
+  const pos=Object.fromEntries((inv||[]).map(i=>[i.kind,i]));
+  const total=(inv||[]).reduce((t,i)=>t+Number(i.value),0);
+  view(header("",()=>profile(me))+`<h2 class="brand">Finanças</h2><p class="muted">Estado de referência: ${esc(me.state_uf)} · valores por mês de jogo</p>
+  <div class="stats"><div class="stat"><b>${brl(me.money)}</b><span>Dinheiro disponível</span></div><div class="stat"><b>${brl(total)}</b><span>Total investido</span></div><div class="stat"><b>${brl(me.salary)}</b><span>Salário</span></div><div class="stat"><b>${brl(me.salary-me.expenses)}</b><span>Saldo mensal</span></div></div>
+  <h3 style="margin:28px 0 12px">Custo de vida (${brl(me.expenses)}/mês)</h3><div class="card">${COST.map(([n,p])=>`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>${n}</span><b>${brl(me.expenses*p)}</b></div><div style="height:6px;border-radius:9px;background:#0a1126;margin-top:4px"><div style="width:${p*250}%;max-width:100%;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--g),var(--b))"></div></div></div>`).join("")}<p class="muted" style="margin-top:12px">Despesas básicas variam por estado. Gastos voluntários, como campanhas, são cobrados à parte.</p></div>
+  <h3 style="margin:28px 0 12px">Investimentos</h3><div class="grid">${Object.entries(INV).map(([k,v])=>{const i=pos[k],val=i?Number(i.value):0,gain=i?val-Number(i.invested):0;return `<div class="stat"><b>${v[0]} ${v[1]}</b><span>${v[2]}</span><div style="margin:10px 0"><b>${brl(val)}</b><div class="muted" style="color:${gain>=0?"var(--g)":"var(--r)"}">${i?(gain>=0?"+":"")+brl(gain)+" sobre o aplicado":"Sem aplicação"}</div></div><div class="row"><button data-inv="${k}">Investir</button><button class="sec" data-red="${k}" ${val>0?"":"disabled"}>Resgatar</button></div></div>`}).join("")}</div>
+  <p class="muted" style="margin-top:10px">Rendimentos são calculados a cada mês de jogo e variam de forma aleatória. Rentabilidade passada não garante ganhos futuros. Sem impostos nesta versão.</p>
+  <h3 style="margin:28px 0 12px">Histórico</h3><div class="card list">${(led||[]).map(l=>`<div style="cursor:default"><div style="flex:1"><b>${esc(l.label)}</b><div class="muted">${dshort(l.game_date)}</div></div><b style="color:${l.amount>=0?"var(--g)":"var(--r)"}">${l.amount>=0?"+":""}${brl(l.amount)}</b></div>`).join("")||`<p class="muted" style="padding:12px">Ainda sem movimentações. O primeiro salário cai no próximo mês de jogo.</p>`}</div>
+  <h3 style="margin:28px 0 12px">Salários por cargo</h3><div class="card list">${(roles||[]).map(r=>`<div style="cursor:default"><div style="flex:1"><b>${esc(r.label)}</b><div class="muted">${esc(r.note||"")}</div></div><b>${brl(r.salary)}${r.exact?"":" <span class=\"muted\">aprox.</span>"}</b></div>`).join("")}</div>`);
+  bindHeader();
+  const op=(k,red)=>modal(red?"Resgatar":"Investir",`<p class="muted" style="margin-top:8px">${INV[k][1]}${red?" · aplicado: "+brl(pos[k]?.value||0):" · mínimo R$ 100,00 · disponível: "+brl(me.money)}</p><label>Valor (R$)${red?" — vazio resgata tudo":""}</label><input id="va" type="number" min="1" step="0.01">`,async m=>{
+    const v=m.querySelector("#va").value;
+    const r=await SB.rpc(red?"redeem":"invest",red?{p_world:world.id,p_kind:k,p_amount:v?+v:null}:{p_world:world.id,p_kind:k,p_amount:+v});
+    if(r.error)throw r.error;me=r.data.character;toast(r.data.msg,true);finance()},red?"Resgatar":"Investir");
+  document.querySelectorAll("[data-inv]").forEach(b=>b.onclick=()=>op(b.dataset.inv,false));
+  document.querySelectorAll("[data-red]").forEach(b=>b.onclick=()=>op(b.dataset.red,true));
+}
+
+/* ---------- GESTÃO DO SERVIDOR (líder) ---------- */
+async function manage(){
+  view(loading("Carregando membros..."));
+  const [{data:mem},{data:chars}]=await Promise.all([SB.from("world_members").select("*").eq("world_id",world.id).order("joined_at"),SB.from("characters").select("user_id,full_name,city_name,state_uf").eq("world_id",world.id)]);
+  const cm=Object.fromEntries((chars||[]).map(c=>[c.user_id,c]));
+  view(header("",()=>me?profile(me):servers())+`<h2 class="brand">Gerenciar: ${esc(world.name)}</h2><p class="muted">${(mem||[]).length} membro(s)</p>
+  <div class="card list" style="margin-top:14px">${(mem||[]).map(m=>{const c=cm[m.user_id];return `<div style="cursor:default"><div style="flex:1"><b>${esc(c?c.full_name:"Jogador sem personagem")}</b> ${m.role==="owner"?`<span class="tag">Líder</span>`:""}<div class="muted">${c?esc(c.city_name)+"/"+esc(c.state_uf):"Ainda não criou personagem"}</div></div>${m.role==="owner"?"":`<button class="sec" data-kick="${m.user_id}">Expulsar</button><button class="dng" data-ban="${m.user_id}">Banir</button>`}</div>`}).join("")}</div>
+  <div class="card" style="margin-top:20px;border-color:#7f1d1d"><h3>Zona de perigo</h3><p class="muted" style="margin:6px 0 14px">Excluir o servidor apaga todos os personagens e dados dele. Não dá para desfazer.</p><button class="dng" id="del">Excluir servidor</button></div>`);
+  bindHeader();
+  const rm=(uid,ban)=>{const c=cm[uid];modal(ban?"Banir jogador":"Expulsar jogador",`<p class="muted" style="margin-top:8px">${esc(c?c.full_name:"Este jogador")} perderá o personagem neste servidor${ban?" e não poderá voltar":", mas poderá entrar de novo"}.</p>`,async()=>{const r=await SB.rpc("kick_member",{p_world:world.id,p_user:uid,p_ban:ban});if(r.error)throw r.error;toast("Jogador removido.",true);manage()},ban?"Banir":"Expulsar")};
+  document.querySelectorAll("[data-kick]").forEach(b=>b.onclick=()=>rm(b.dataset.kick,false));
+  document.querySelectorAll("[data-ban]").forEach(b=>b.onclick=()=>rm(b.dataset.ban,true));
+  $("#del").onclick=()=>modal("Excluir servidor",`<p class="muted" style="margin-top:8px">Digite o nome do servidor para confirmar:</p><b>${esc(world.name)}</b><input id="cf" style="margin-top:10px">`,async m=>{if(m.querySelector("#cf").value.trim()!==world.name)throw new Error("O nome digitado não confere.");const r=await SB.rpc("delete_world",{p_world:world.id});if(r.error)throw r.error;toast("Servidor excluído.",true);hub()},"Excluir");
 }
 
 /* ---------- SONS E INÍCIO ---------- */
