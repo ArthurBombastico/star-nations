@@ -92,6 +92,23 @@ input,select,textarea{transition:border-color .2s,box-shadow .2s}
 .snd{position:fixed;top:14px;right:14px;z-index:5;padding:8px 12px}
 @media(max-width:800px){.auth{grid-template-columns:1fr;gap:24px;min-height:auto;padding-top:30px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+#app{max-width:1360px;padding:26px 30px 80px}
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);gap:30px;align-items:start}
+.nav{position:sticky;top:18px;display:flex;flex-direction:column;gap:6px;padding:16px;background:linear-gradient(160deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:20px;box-shadow:0 10px 40px #0006}
+.nav a{display:flex;gap:14px;align-items:center;padding:14px 16px;border-radius:12px;color:var(--mu);cursor:pointer;font-weight:600;font-size:1.02rem;transition:.2s}
+.nav a span{font-size:1.25rem}
+.nav a:hover{background:#ffffff0d;color:var(--tx);transform:translateX(3px)}
+.nav a.on{background:linear-gradient(90deg,#18c78b2e,#3b82f61f);color:var(--tx);box-shadow:inset 3px 0 0 var(--g)}
+.page-h{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:24px}
+.page-h h2{font-size:2.1rem;line-height:1.15}
+.page-h .acts{display:flex;gap:10px;flex-wrap:wrap}
+.card{padding:30px}.stat{padding:22px}.stat b{font-size:1.45rem}
+.list>div{padding:16px 18px}.list .av{width:54px;height:54px;font-size:1.1rem}
+.grid.wide{grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:20px}
+.pcard{cursor:pointer;transition:.25s}.pcard:hover{transform:translateY(-4px);border-color:var(--g)}.pcard.me{border-color:var(--g);box-shadow:0 0 0 1px var(--g),0 10px 40px #0006}
+.tag.y{background:#f5c54222;color:var(--y);border-color:#f5c54255}
+@media(max-width:900px){#app{padding:18px 14px 70px}.shell{grid-template-columns:1fr;gap:16px}.nav{position:static;flex-direction:row;overflow-x:auto;padding:10px}.nav a{white-space:nowrap;padding:11px 14px}}
 </style>
 </head>
 <body>
@@ -122,7 +139,7 @@ function fmtGame(){const w=world,d=new Date(w.start_game_date+"T12:00:00");d.set
 
 
 function toast(m,ok){ok===true?SND.ok():SND.err();const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(t._t);t._t=setTimeout(()=>t.style.display="none",4000)}
-function view(h){$("#app").innerHTML=h;window.scrollTo(0,0)}
+function view(h){$("#app").innerHTML=h+(_open?"</main></div>":"");_open=false;window.scrollTo(0,0)}
 function avatar(c,cls=""){return c.photo_url?`<img class="av ${cls}" src="${esc(c.photo_url)}" alt="">`:`<div class="av ${cls}">${esc(c.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}
 function modal(title,body,onOk,okLabel="Confirmar"){
   SND.open();const m=document.createElement("div");m.className="modal";
@@ -155,9 +172,18 @@ function authView(signup=false){
 }
 
 /* ---------- HUB ---------- */
-let _back=null;
-function header(extra="",back=null){_back=back;return `<div class="top"><div style="display:flex;align-items:center;gap:12px">${back?`<button class="sec" id="back">← Voltar</button>`:""}<div class="brand" style="cursor:pointer" id="home">★ Star Nations</div></div><div class="row" style="flex:none;align-items:center">${extra}<button class="sec" id="snd" title="Som"></button><button class="sec" id="out">Sair</button></div></div>`}
-function bindHeader(){bindSnd();if(_back&&$("#back"))$("#back").onclick=_back;$("#home").onclick=hub;$("#out").onclick=()=>SB.auth.signOut()}
+let _back=null,_open=false;
+function header0(extra="",back=null){_back=back;return `<div class="top"><div style="display:flex;align-items:center;gap:12px">${back?`<button class="sec" id="back">← Voltar</button>`:""}<div class="brand" style="cursor:pointer" id="home">★ Star Nations</div></div><div class="row" style="flex:none;align-items:center">${extra}<button class="sec" id="snd" title="Som"></button><button class="sec" id="out">Sair</button></div></div>`}
+
+const TABS=[["home","🏠","Início"],["fin","💰","Finanças"],["people","👥","Cidadãos"],["parties","🏛️","Partidos"],["moves","✊","Movimentos"],["allies","🤝","Amigos e aliados"]];
+function header(extra="",back=null,tab=null){
+  _open=!!tab;
+  if(tab&&!extra.includes('id="clk"'))extra=`<span class="clock" id="clk">📅 ${esc(fmtGame())}</span>`+extra;
+  const owner=world&&world.mode==="server"&&world.owner_id===user.id;
+  return header0(extra,back)+(tab?`<div class="shell"><aside class="nav">${TABS.concat(owner?[["manage","⚙️","Gerenciar"]]:[]).map(([k,i,l])=>`<a data-tab="${k}" class="${k===tab?"on":""}"><span>${i}</span>${l}</a>`).join("")}</aside><main>`:"");
+}
+const pageH=(t,sub,right="")=>`<div class="page-h"><div><h2 class="brand">${t}</h2><p class="muted">${sub}</p></div><div class="acts">${right}</div></div>`;
+function bindHeader(){bindSnd();document.querySelectorAll("[data-tab]").forEach(a=>a.onclick=()=>GO[a.dataset.tab]());if(_back&&$("#back"))$("#back").onclick=_back;$("#home").onclick=hub;$("#out").onclick=()=>SB.auth.signOut()}
 function hub(){
   world=null;me=null;
   view(header()+`<div class="hero" style="padding-top:10px"><h1 class="brand">Escolha seu caminho</h1><p>Como você quer jogar?</p></div>
@@ -235,15 +261,15 @@ async function creator(){
 function profile(c){
   const mine=c.user_id===user.id,owner=world.mode==="server"&&world.owner_id===user.id;
   const date=fmtGame();
-  view(header(`<span class="clock" id="clk">📅 ${esc(date)}</span>`,mine?hub:()=>people())+`<div class="card"><div class="prof">${avatar(c)}<div style="flex:1;min-width:200px">
+  view(header(`<span class="clock" id="clk">📅 ${esc(date)}</span>`,mine?null:()=>people(),mine?"home":"people")+`<div class="card"><div class="prof">${avatar(c)}<div style="flex:1;min-width:200px">
    <h2>${esc(c.full_name)}</h2><div style="margin:6px 0"><span class="tag">${esc(c.role==="cidadao"?"Cidadão":c.role)}</span><span class="tag b">${esc(IDEO[c.ideology])}</span><span class="tag b">${esc(PROF[c.political_profile])}</span></div>
-   <div class="muted">📍 ${esc(c.city_name)} — ${esc(c.state_uf)}</div></div></div>
+   <div class="muted">📍 ${esc(c.city_name)} — ${esc(c.state_uf)}</div><div id="aff" style="margin-top:12px"></div></div></div>
    <p style="margin-top:16px">${esc(c.description||"Sem descrição.")}</p>
    <div class="stats"><div class="stat"><b>${brl(c.salary)}</b><span>Salário mensal</span></div><div class="stat"><b>${brl(c.money)}</b><span>Dinheiro</span></div><div class="stat"><b>${c.supporters.toLocaleString("pt-BR")}</b><span>Apoiadores</span></div><div class="stat"><b>${c.reputation}/100</b><span>Reputação</span></div><div class="stat"><b>${brl(c.expenses)}</b><span>Gastos mensais</span></div><div class="stat"><b>${brl(c.salary-c.expenses)}</b><span>Saldo por mês de jogo</span></div></div>
-   <div class="row" style="margin-top:20px">${mine?"":`<button class="dng" id="rp">Denunciar perfil</button>`}${owner?`<button class="sec" id="mg">⚙️ Gerenciar servidor</button>`:""}${mine?`<button class="sec" id="fin">💰 Finanças</button>`:""}<button class="sec" id="pp">👥 Ver cidadãos do mundo</button>${mine?"":`<button id="bk">Meu perfil</button>`}</div>${mine?actPanel():""}</div>
+   <div class="row" style="margin-top:20px">${mine?"":`<button class="dng" id="rp">Denunciar perfil</button>`}${owner?`<button class="sec" id="mg">⚙️ Gerenciar servidor</button>`:""}${mine?"":`<button id="bk">Meu perfil</button>`}</div>${mine?actPanel():""}</div>
    <p class="muted" style="margin-top:14px;text-align:center">Mundo: ${esc(world.name)} · Em breve: partidos, movimentos, manifestações e eleições.</p>`);
   bindHeader();
-  $("#pp").onclick=()=>people();if($("#mg"))$("#mg").onclick=manage;if($("#fin"))$("#fin").onclick=finance;if(mine)bindActions();clearInterval(window._ck);window._ck=setInterval(()=>{const e=$("#clk");if(e)e.textContent="📅 "+fmtGame()},30000);
+  if($("#mg"))$("#mg").onclick=manage;if(mine)bindActions();fillAffil(c);clearInterval(window._ck);window._ck=setInterval(()=>{const e=$("#clk");if(e)e.textContent="📅 "+fmtGame()},30000);
   if($("#bk"))$("#bk").onclick=()=>profile(me);
   if($("#rp"))$("#rp").onclick=()=>modal("Denunciar perfil",`<label>Motivo</label><textarea id="rs" maxlength="500"></textarea>`,async m=>{
     const r=await SB.from("reports").insert({reporter_id:user.id,character_id:c.id,reason:m.querySelector("#rs").value.trim()});
@@ -253,9 +279,9 @@ function profile(c){
 async function people(q=""){
   let req=SB.from("characters").select("*").eq("world_id",world.id).order("supporters",{ascending:false}).limit(50);
   if(q)req=req.ilike("full_name",`%${q}%`);
-  const {data}=await req;
-  view(header("",()=>profile(me))+`<h2 class="brand">Cidadãos</h2><input id="sq" placeholder="Buscar por nome..." value="${esc(q)}" style="margin:14px 0">
-  <div class="card list">${(data||[]).map(c=>`<div data-id="${c.id}">${avatar(c)}<div style="flex:1"><b>${esc(c.full_name)}</b><div class="muted">${esc(c.city_name)}/${esc(c.state_uf)} · ${esc(IDEO[c.ideology])}</div></div><span class="muted">${c.supporters} apoiadores</span></div>`).join("")||`<p class="muted" style="padding:12px">Ninguém encontrado.</p>`}</div>`);
+  const [{data}]=await Promise.all([req,loadW()]);
+  view(header("",null,"people")+`<h2 class="brand">Cidadãos</h2><input id="sq" placeholder="Buscar por nome..." value="${esc(q)}" style="margin:14px 0">
+  <div class="card list">${(data||[]).map(c=>`<div data-id="${c.id}">${avatar(c)}<div style="flex:1"><b>${esc(c.full_name)}</b><div class="muted">${esc(c.city_name)}/${esc(c.state_uf)} · ${esc(IDEO[c.ideology])}${partyTag(c.id)}</div></div><span class="muted">${c.supporters} apoiadores</span></div>`).join("")||`<p class="muted" style="padding:12px">Ninguém encontrado.</p>`}</div>`);
   bindHeader();
   $("#sq").onkeydown=e=>{if(e.key==="Enter")people(e.target.value.trim())};
   document.querySelectorAll(".list [data-id]").forEach(el=>el.onclick=()=>profile(data.find(x=>x.id===el.dataset.id)));
@@ -299,7 +325,7 @@ async function finance(){
     SB.from("role_salaries").select("*").order("sort")]);
   const pos=Object.fromEntries((inv||[]).map(i=>[i.kind,i]));
   const total=(inv||[]).reduce((t,i)=>t+Number(i.value),0);
-  view(header("",()=>profile(me))+`<h2 class="brand">Finanças</h2><p class="muted">Estado de referência: ${esc(me.state_uf)} · valores por mês de jogo</p>
+  view(header("",null,"fin")+`<h2 class="brand">Finanças</h2><p class="muted">Estado de referência: ${esc(me.state_uf)} · valores por mês de jogo</p>
   <div class="stats"><div class="stat"><b>${brl(me.money)}</b><span>Dinheiro disponível</span></div><div class="stat"><b>${brl(total)}</b><span>Total investido</span></div><div class="stat"><b>${brl(me.salary)}</b><span>Salário</span></div><div class="stat"><b>${brl(me.salary-me.expenses)}</b><span>Saldo mensal</span></div></div>
   <h3 style="margin:28px 0 12px">Custo de vida (${brl(me.expenses)}/mês)</h3><div class="card">${COST.map(([n,p])=>`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>${n}</span><b>${brl(me.expenses*p)}</b></div><div style="height:6px;border-radius:9px;background:#0a1126;margin-top:4px"><div style="width:${p*250}%;max-width:100%;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--g),var(--b))"></div></div></div>`).join("")}<p class="muted" style="margin-top:12px">Despesas básicas variam por estado. Gastos voluntários, como campanhas, são cobrados à parte.</p></div>
   <h3 style="margin:28px 0 12px">Investimentos</h3><div class="grid">${Object.entries(INV).map(([k,v])=>{const i=pos[k],val=i?Number(i.value):0,gain=i?val-Number(i.invested):0;return `<div class="stat"><b>${v[0]} ${v[1]}</b><span>${v[2]}</span><div style="margin:10px 0"><b>${brl(val)}</b><div class="muted" style="color:${gain>=0?"var(--g)":"var(--r)"}">${i?(gain>=0?"+":"")+brl(gain)+" sobre o aplicado":"Sem aplicação"}</div></div><div class="row"><button data-inv="${k}">Investir</button><button class="sec" data-red="${k}" ${val>0?"":"disabled"}>Resgatar</button></div></div>`}).join("")}</div>
@@ -320,7 +346,7 @@ async function manage(){
   view(loading("Carregando membros..."));
   const [{data:mem},{data:chars}]=await Promise.all([SB.from("world_members").select("*").eq("world_id",world.id).order("joined_at"),SB.from("characters").select("user_id,full_name,city_name,state_uf").eq("world_id",world.id)]);
   const cm=Object.fromEntries((chars||[]).map(c=>[c.user_id,c]));
-  view(header("",()=>me?profile(me):servers())+`<h2 class="brand">Gerenciar: ${esc(world.name)}</h2><p class="muted">${(mem||[]).length} membro(s)</p>
+  view(header("",me?null:servers,me?"manage":null)+`<h2 class="brand">Gerenciar: ${esc(world.name)}</h2><p class="muted">${(mem||[]).length} membro(s)</p>
   <div class="card list" style="margin-top:14px">${(mem||[]).map(m=>{const c=cm[m.user_id];return `<div style="cursor:default"><div style="flex:1"><b>${esc(c?c.full_name:"Jogador sem personagem")}</b> ${m.role==="owner"?`<span class="tag">Líder</span>`:""}<div class="muted">${c?esc(c.city_name)+"/"+esc(c.state_uf):"Ainda não criou personagem"}</div></div>${m.role==="owner"?"":`<button class="sec" data-kick="${m.user_id}">Expulsar</button><button class="dng" data-ban="${m.user_id}">Banir</button>`}</div>`}).join("")}</div>
   <div class="card" style="margin-top:20px;border-color:#7f1d1d"><h3>Zona de perigo</h3><p class="muted" style="margin:6px 0 14px">Excluir o servidor apaga todos os personagens e dados dele. Não dá para desfazer.</p><button class="dng" id="del">Excluir servidor</button></div>`);
   bindHeader();
@@ -328,6 +354,113 @@ async function manage(){
   document.querySelectorAll("[data-kick]").forEach(b=>b.onclick=()=>rm(b.dataset.kick,false));
   document.querySelectorAll("[data-ban]").forEach(b=>b.onclick=()=>rm(b.dataset.ban,true));
   $("#del").onclick=()=>modal("Excluir servidor",`<p class="muted" style="margin-top:8px">Digite o nome do servidor para confirmar:</p><b>${esc(world.name)}</b><input id="cf" style="margin-top:10px">`,async m=>{if(m.querySelector("#cf").value.trim()!==world.name)throw new Error("O nome digitado não confere.");const r=await SB.rpc("delete_world",{p_world:world.id});if(r.error)throw r.error;toast("Servidor excluído.",true);hub()},"Excluir");
+}
+
+/* ---------- ETAPA 2: PARTIDOS, MOVIMENTOS, MANIFESTAÇÕES, ALIADOS ---------- */
+const CAUSES={saude:"Saúde",educacao:"Educação",seguranca:"Segurança",meio_ambiente:"Meio ambiente",economia:"Economia e emprego",direitos:"Direitos e igualdade",moradia:"Moradia",agro:"Agro e campo",religiao:"Fé e valores",outro:"Outra causa"};
+const GO={home:()=>profile(me),fin:()=>finance(),people:()=>people(),parties:()=>partiesView(),moves:()=>movesView(),allies:()=>alliesView(),manage:()=>manage()};
+let W={t:0,parties:[],pm:[],mv:[],mm:[],rel:[],ch:{}};
+async function loadW(force){
+  if(!force&&W.world===world.id&&Date.now()-W.t<15000)return W;
+  const q=t=>SB.from(t).select("*").eq("world_id",world.id);
+  const [p,pm,mv,mm,rl,ch]=await Promise.all([q("parties"),q("party_members"),q("movements"),q("movement_members"),q("relations"),SB.from("characters").select("id,user_id,full_name,photo_url,city_name,state_uf,ideology,supporters").eq("world_id",world.id).limit(500)]);
+  W={t:Date.now(),world:world.id,parties:p.data||[],pm:pm.data||[],mv:mv.data||[],mm:mm.data||[],rel:rl.data||[],ch:Object.fromEntries((ch.data||[]).map(c=>[c.id,c]))};
+  return W;
+}
+const partyOf=cid=>{const m=W.pm.find(x=>x.character_id===cid);return m&&W.parties.find(p=>p.id===m.party_id)};
+const movsOf=cid=>W.mm.filter(x=>x.character_id===cid).map(x=>W.mv.find(m=>m.id===x.movement_id)).filter(Boolean);
+function affTags(cid){const p=partyOf(cid),ms=movsOf(cid);return (p?`<span class="tag">🏛️ ${esc(p.acronym)}</span>`:"")+ms.slice(0,2).map(m=>`<span class="tag b">✊ ${esc(m.name)}</span>`).join("")+(ms.length>2?`<span class="tag b">+${ms.length-2}</span>`:"")}
+const partyTag=cid=>`<div style="margin-top:6px">${affTags(cid)||`<span class="muted">Sem partido nem movimento</span>`}</div>`;
+async function openChar(id){if(id===me.id)return profile(me);view(loading("Abrindo perfil..."));const {data}=await SB.from("characters").select("*").eq("id",id).single();data?profile(data):(toast("Perfil não encontrado."),people())}
+const prow=(cid,extra="")=>{const c=W.ch[cid];return c?`<div data-c="${cid}">${avatar(c)}<div style="flex:1"><b>${esc(c.full_name)}</b><div class="muted">${esc(c.city_name)}/${esc(c.state_uf)} · ${esc(IDEO[c.ideology])}</div></div>${extra}</div>`:""};
+const bindRows=()=>document.querySelectorAll("[data-c]").forEach(r=>r.onclick=()=>openChar(r.dataset.c));
+const empty=t=>`<p class="muted" style="padding:16px">${t}</p>`;
+async function act(fn,args,msg){const r=await SB.rpc(fn,args);if(r.error){toast(r.error.message);return false}if(msg)toast(msg,true);await loadW(true);return true}
+
+async function fillAffil(c){
+  await loadW();const el=$("#aff");if(!el)return;
+  let h=affTags(c.id)||`<span class="muted">Sem partido nem movimento.</span>`;
+  if(c.user_id!==user.id){
+    const r=W.rel.find(x=>(x.requester_id===me.id&&x.target_id===c.id)||(x.requester_id===c.id&&x.target_id===me.id));
+    h+=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">`+(r?`<span class="tag">${r.status==="aceito"?(r.kind==="aliado"?"🤝 Aliado":"👋 Amigo"):"Pedido pendente"}</span>`:`<button class="sec" data-rq="amigo">👋 Adicionar amigo</button><button class="sec" data-rq="aliado">🤝 Pedir aliança</button>`)+`</div>`;
+  }
+  el.innerHTML=h;
+  el.querySelectorAll("[data-rq]").forEach(b=>b.onclick=async()=>{b.disabled=true;if(await act("relate_request",{p_world:world.id,p_target:c.id,p_kind:b.dataset.rq},"Pedido enviado!"))fillAffil(c);else b.disabled=false});
+}
+
+/* ----- Partidos ----- */
+async function partiesView(){
+  view(loading("Carregando partidos..."));await loadW(true);
+  const mine=partyOf(me.id),cnt=id=>W.pm.filter(x=>x.party_id===id).length;
+  const list=[...W.parties].sort((a,b)=>a.is_real===b.is_real?a.acronym.localeCompare(b.acronym):a.is_real?1:-1);
+  view(header("",null,"parties")+pageH("Partidos",`${W.parties.length} partidos neste mundo${mine?" · você é filiado ao "+esc(mine.acronym):""}`,`<button id="np">+ Fundar partido</button>`)+
+   `<div class="grid wide">${list.map(p=>`<div class="card pcard ${mine?.id===p.id?"me":""}" data-p="${p.id}"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="brand" style="font-size:1.7rem">${esc(p.acronym)}</div><span class="muted">${p.number?"nº "+p.number:"sem número"}</span></div><b>${esc(p.name)}</b><div style="margin:10px 0"><span class="tag b">${esc(IDEO[p.ideology])}</span>${p.status==="em_formacao"?`<span class="tag y">Em formação ${cnt(p.id)}/5</span>`:""}${p.is_real?"":`<span class="tag">Criado por jogador</span>`}</div><div class="muted">👥 ${cnt(p.id)} filiado(s)</div></div>`).join("")}</div>`);
+  bindHeader();
+  document.querySelectorAll("[data-p]").forEach(el=>el.onclick=()=>partyDetail(el.dataset.p));
+  $("#np").onclick=()=>modal("Fundar partido",`<p class="muted" style="margin-top:8px">Custa R$ 2.500,00 e exige 20 apoiadores. O partido só é registrado (e ganha número eleitoral) quando chegar a 5 filiados.</p><label>Nome do partido</label><input id="pn" maxlength="60"><label>Sigla (só letras)</label><input id="pa" maxlength="12"><label>Ideologia</label><select id="pi">${opts(IDEO,"centro")}</select><label>Descrição e propostas</label><textarea id="pd" maxlength="500"></textarea>`,async m=>{
+    const r=await SB.rpc("create_party",{p_world:world.id,p_name:m.querySelector("#pn").value,p_acronym:m.querySelector("#pa").value,p_ideology:m.querySelector("#pi").value,p_desc:m.querySelector("#pd").value});
+    if(r.error)throw r.error;toast("Partido fundado! Convide 4 filiados para o registro.",true);await loadW(true);partyDetail(r.data)},"Fundar");
+}
+function partyDetail(id){
+  const p=W.parties.find(x=>x.id===id);if(!p)return partiesView();
+  const ms=W.pm.filter(x=>x.party_id===id).sort((a,b)=>new Date(a.joined_at)-new Date(b.joined_at)),mine=partyOf(me.id);
+  view(header("",partiesView,"parties")+`<div class="card"><div class="prof"><div class="av" style="border-radius:22px;font-size:1.05rem;text-align:center">${esc(p.acronym.slice(0,5))}</div><div style="flex:1;min-width:230px"><h2>${esc(p.name)}</h2><div style="margin:10px 0"><span class="tag">${esc(p.acronym)}</span>${p.number?`<span class="tag">nº ${p.number}</span>`:""}<span class="tag b">${esc(IDEO[p.ideology])}</span>${p.status==="em_formacao"?`<span class="tag y">Em formação: ${ms.length}/5 filiados para o registro</span>`:`<span class="tag">Registrado</span>`}</div><p>${esc(p.description||"Sem descrição.")}</p></div></div>
+  <div style="margin-top:22px">${mine?.id===id?`<button class="dng" id="pl">Sair do partido</button>`:mine?`<span class="muted">Você é filiado ao ${esc(mine.acronym)}. Saia dele para se filiar a outro.</span>`:`<button id="pj">Filiar-se</button>`}</div></div>
+  <h3 style="margin:30px 0 14px">Filiados (${ms.length})</h3><div class="card list">${ms.map(m=>prow(m.character_id,m.role==="presidente"?`<span class="tag">Presidente</span>`:"")).join("")||empty("Nenhum filiado ainda.")}</div>`);
+  bindHeader();bindRows();
+  if($("#pj"))$("#pj").onclick=async()=>{if(await act("join_party",{p_world:world.id,p_party:id},"Você se filiou!"))partyDetail(id)};
+  if($("#pl"))$("#pl").onclick=async()=>{if(await act("leave_party",{p_world:world.id},"Você saiu do partido."))partiesView()};
+}
+
+/* ----- Movimentos e manifestações ----- */
+async function movesView(){
+  view(loading("Carregando movimentos..."));
+  await SB.rpc("resolve_demos",{p_world:world.id});
+  const [,{data:demos},{data:dp}]=await Promise.all([loadW(true),SB.from("demonstrations").select("*").eq("world_id",world.id).order("created_at",{ascending:false}).limit(30),SB.from("demo_participants").select("*").eq("world_id",world.id)]);
+  const cnt=id=>W.mm.filter(x=>x.movement_id===id).length,mine=new Set(movsOf(me.id).map(m=>m.id)),now=Date.now();
+  view(header("",null,"moves")+pageH("Movimentos e manifestações","Mobilize pessoas em torno de uma causa.",`<button id="nm">+ Criar movimento</button><button class="sec" id="nd">📢 Organizar manifestação</button>`)+
+  `<h3 style="margin:4px 0 14px">Movimentos</h3><div class="grid wide">${W.mv.map(m=>`<div class="card pcard ${mine.has(m.id)?"me":""}" data-m="${m.id}"><b style="font-size:1.15rem">${esc(m.name)}</b><div style="margin:10px 0"><span class="tag b">${esc(CAUSES[m.cause]||m.cause)}</span>${mine.has(m.id)?`<span class="tag">Você participa</span>`:""}</div><div class="muted">👥 ${cnt(m.id)} membro(s) · líder: ${esc(W.ch[m.leader_id]?.full_name||"—")}</div></div>`).join("")||`<div class="card">${empty("Nenhum movimento ainda. Crie o primeiro!")}</div>`}</div>
+  <h3 style="margin:36px 0 14px">Manifestações</h3><div class="card list">${(demos||[]).map(d=>{const open=d.status==="aberta"&&new Date(d.ends_at)>now,n=(dp||[]).filter(x=>x.demo_id===d.id).length,joined=(dp||[]).some(x=>x.demo_id===d.id&&x.character_id===me.id),mv=W.mv.find(m=>m.id===d.movement_id);
+   return `<div style="cursor:default;flex-wrap:wrap"><div style="flex:1;min-width:250px"><b>${open?"🟢":"⚪"} ${esc(d.title)}</b><div class="muted">${esc(CAUSES[d.cause]||d.cause)} · ${esc(d.city_name)}/${esc(d.state_uf)} · por ${esc(W.ch[d.organizer_id]?.full_name||"—")}${mv?" · "+esc(mv.name):""}</div>${!open&&d.result?`<div style="margin-top:8px">${esc(d.result)}</div>`:""}</div><div class="muted">${open?`Encerra em ${Math.max(1,Math.ceil((new Date(d.ends_at)-now)/6e4))} min`:`Público: ${d.turnout??0}`} · ${n} confirmado(s)</div>${open?(joined?`<span class="tag">Confirmado</span>`:`<button data-jd="${d.id}">Participar</button>`):""}</div>`}).join("")||empty("Nenhuma manifestação até agora.")}</div>`);
+  bindHeader();
+  document.querySelectorAll("[data-m]").forEach(el=>el.onclick=()=>movDetail(el.dataset.m));
+  document.querySelectorAll("[data-jd]").forEach(b=>b.onclick=async()=>{b.disabled=true;if(await act("join_demo",{p_world:world.id,p_demo:b.dataset.jd},"Presença confirmada!"))movesView();else b.disabled=false});
+  $("#nm").onclick=()=>modal("Criar movimento",`<p class="muted" style="margin-top:8px">Custa R$ 200,00 e exige 5 apoiadores. Você pode liderar até 3 movimentos.</p><label>Nome</label><input id="mn" maxlength="60"><label>Causa</label><select id="mc">${opts(CAUSES)}</select><label>Descrição</label><textarea id="md" maxlength="500"></textarea>`,async m=>{
+    const r=await SB.rpc("create_movement",{p_world:world.id,p_name:m.querySelector("#mn").value,p_cause:m.querySelector("#mc").value,p_desc:m.querySelector("#md").value});
+    if(r.error)throw r.error;toast("Movimento criado!",true);await loadW(true);movDetail(r.data)},"Criar");
+  $("#nd").onclick=()=>modal("Organizar manifestação",`<p class="muted" style="margin-top:8px">Custa R$ 200,00. Fica aberta por 6 horas para confirmações e o resultado depende do seu apoio e do público. Pode render apoio e reputação, ou esvaziar. Limite de uma a cada 6 horas.</p><label>Título</label><input id="dt" maxlength="80"><label>Causa</label><select id="dc">${opts(CAUSES)}</select><label>Movimento (opcional)</label><select id="dm"><option value="">Independente</option>${movsOf(me.id).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join("")}</select><label>Descrição</label><textarea id="dd" maxlength="500"></textarea>`,async m=>{
+    const r=await SB.rpc("create_demo",{p_world:world.id,p_title:m.querySelector("#dt").value,p_cause:m.querySelector("#dc").value,p_desc:m.querySelector("#dd").value,p_movement:m.querySelector("#dm").value||null});
+    if(r.error)throw r.error;me=(await SB.rpc("settle_me",{p_world:world.id})).data;toast("Manifestação convocada!",true);movesView()},"Convocar");
+}
+function movDetail(id){
+  const m=W.mv.find(x=>x.id===id);if(!m)return movesView();
+  const ms=W.mm.filter(x=>x.movement_id===id).sort((a,b)=>new Date(a.joined_at)-new Date(b.joined_at)),isMem=ms.some(x=>x.character_id===me.id);
+  view(header("",movesView,"moves")+`<div class="card"><h2>${esc(m.name)}</h2><div style="margin:10px 0"><span class="tag b">${esc(CAUSES[m.cause]||m.cause)}</span></div><p>${esc(m.description||"Sem descrição.")}</p><div style="margin-top:22px">${isMem?`<button class="dng" id="ml">Sair do movimento</button>`:`<button id="mj">Participar</button>`}</div></div>
+  <h3 style="margin:30px 0 14px">Membros (${ms.length})</h3><div class="card list">${ms.map(x=>prow(x.character_id,x.role==="lider"?`<span class="tag">Líder</span>`:"")).join("")||empty("Sem membros.")}</div>`);
+  bindHeader();bindRows();
+  if($("#mj"))$("#mj").onclick=async()=>{if(await act("join_movement",{p_world:world.id,p_mov:id},"Você entrou no movimento!"))movDetail(id)};
+  if($("#ml"))$("#ml").onclick=async()=>{if(await act("leave_movement",{p_world:world.id,p_mov:id},"Você saiu do movimento."))movesView()};
+}
+
+/* ----- Amigos e aliados ----- */
+async function alliesView(){
+  view(loading("Carregando sua rede..."));await loadW(true);
+  const other=r=>r.requester_id===me.id?r.target_id:r.requester_id;
+  const got=W.rel.filter(r=>r.status==="pendente"&&r.target_id===me.id),sent=W.rel.filter(r=>r.status==="pendente"&&r.requester_id===me.id),ok=W.rel.filter(r=>r.status==="aceito");
+  const kind=r=>r.kind==="aliado"?`<span class="tag">🤝 Aliado</span>`:`<span class="tag b">👋 Amigo</span>`;
+  const p=partyOf(me.id),ms=movsOf(me.id);
+  const sec=(t,b)=>`<h3 style="margin:30px 0 14px">${t}</h3><div class="card list">${b}</div>`;
+  view(header("",null,"allies")+pageH("Amigos e aliados","Sua rede política: gente do seu partido, dos seus movimentos e das suas alianças.")+
+   (got.length?sec(`Pedidos recebidos (${got.length})`,got.map(r=>prow(r.requester_id,`${kind(r)}<button data-ra="${r.id}">Aceitar</button><button class="sec" data-rd="${r.id}">Recusar</button>`)).join("")):"")+
+   sec(`Amigos e aliados (${ok.length})`,ok.map(r=>prow(other(r),`${kind(r)}<button class="sec" data-rm="${r.id}">Remover</button>`)).join("")||empty("Você ainda não tem amigos nem aliados. Abra o perfil de um cidadão para enviar um pedido."))+
+   sec(p?`Meu partido: ${esc(p.acronym)}`:"Meu partido",p?W.pm.filter(x=>x.party_id===p.id&&x.character_id!==me.id).map(x=>prow(x.character_id,x.role==="presidente"?`<span class="tag">Presidente</span>`:"")).join("")||empty("Você é o único filiado por enquanto."):empty("Você ainda não é filiado a nenhum partido. Veja a aba Partidos."))+
+   (ms.length?ms.map(m=>sec(`Movimento: ${esc(m.name)}`,W.mm.filter(x=>x.movement_id===m.id&&x.character_id!==me.id).map(x=>prow(x.character_id,x.role==="lider"?`<span class="tag">Líder</span>`:"")).join("")||empty("Você é o único membro por enquanto."))).join(""):sec("Meus movimentos",empty("Você ainda não participa de movimentos. Veja a aba Movimentos.")))+
+   (sent.length?sec(`Pedidos enviados (${sent.length})`,sent.map(r=>prow(r.target_id,`${kind(r)}<span class="muted">aguardando</span>`)).join("")):""));
+  bindHeader();bindRows();
+  const bindB=(sel,fn,msg)=>document.querySelectorAll(sel).forEach(b=>b.onclick=async e=>{e.stopPropagation();b.disabled=true;if(await act(fn,b.dataset.args?JSON.parse(b.dataset.args):{},msg))alliesView();else b.disabled=false});
+  document.querySelectorAll("[data-ra]").forEach(b=>b.onclick=async e=>{e.stopPropagation();if(await act("relate_respond",{p_rel:b.dataset.ra,p_accept:true},"Pedido aceito!"))alliesView()});
+  document.querySelectorAll("[data-rd]").forEach(b=>b.onclick=async e=>{e.stopPropagation();if(await act("relate_respond",{p_rel:b.dataset.rd,p_accept:false},"Pedido recusado."))alliesView()});
+  document.querySelectorAll("[data-rm]").forEach(b=>b.onclick=async e=>{e.stopPropagation();if(await act("relate_remove",{p_rel:b.dataset.rm},"Relação removida."))alliesView()});
 }
 
 /* ---------- SONS E INÍCIO ---------- */
