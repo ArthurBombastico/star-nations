@@ -119,6 +119,7 @@ input,select,textarea{transition:border-color .2s,box-shadow .2s}
 .opt{text-align:left;padding:18px 20px;font-weight:500;line-height:1.45;font-size:1.02rem}
 @media(max-width:900px){.mrow{grid-template-columns:1fr 1fr;padding:14px}.mhead{display:none}}
 .ivb{background:linear-gradient(90deg,#f5c542,#ffe08a,#f59e0b,#f5c542);background-size:300% 100%;animation:ivs 3s linear infinite,ivp 2s ease-in-out infinite;color:#2b1d00;font-weight:700;border:0}
+.ivb.sm{padding:9px 14px;font-size:.85rem}
 @keyframes ivs{to{background-position:300% 0}}
 @keyframes ivp{50%{box-shadow:0 0 0 6px #f5c54200,0 0 24px #f5c542aa}}
 </style>
@@ -192,7 +193,7 @@ const TABS=[["home","🏠","Início"],["fin","💰","Finanças"],["people","👥
 const HTABS=[["h_play","🎮","Jogar"],["h_servers","🌐","Meus servidores"],["h_friends","👥","Amigos"],["h_settings","⚙️","Configurações"]];
 function header(extra="",back=null,tab=null){
   _open=!!tab;
-  if(tab&&world&&!tab.startsWith("h_")&&!_ivHere&&me){const ap=activeApp();if(ap&&ap.status!=="pendente_lider")extra=`<button class="ivb" id="ivb">${ivbText(ap)}</button>`+extra}
+  if(tab&&world&&!tab.startsWith("h_")&&!_ivHere&&tab!=="parties"&&me){const ap=activeApp();if(ap&&ap.status!=="pendente_lider")extra=`<button class="ivb" id="ivb">${ivbText(ap)}</button>`+extra}
   if(tab&&world&&!tab.startsWith("h_")&&!extra.includes('id="clk"'))extra=`<span class="clock" id="clk">📅 ${esc(fmtGame())}</span>`+extra;
   const owner=world&&world.mode==="server"&&world.owner_id===user.id;
   return header0(extra,back)+(tab?`<div class="shell"><aside class="nav">${(tab.startsWith("h_")?HTABS:TABS.concat(owner?[["manage","⚙️","Gerenciar"]]:[])).map(([k,i,l])=>`<a data-tab="${k}" class="${k===tab?"on":""}"><span>${i}</span>${l}</a>`).join("")}</aside><main>`:"");
@@ -435,8 +436,8 @@ async function partiesView(){
   if(ap&&ap.status!=="pendente_lider"&&!ivMin)return interviewView(ap.id);
   const cnt=id=>W.pm.filter(x=>x.party_id===id).length+W.npc.filter(x=>x.party_id===id).length;
   const list=[...W.parties].sort((a,b)=>a.is_real===b.is_real?a.acronym.localeCompare(b.acronym):a.is_real?1:-1);
-  view(header("",null,"parties")+pageH("Partidos",`${W.parties.length} partidos neste mundo${mine?" · você é filiado ao "+esc(mine.acronym):""}`,`<button id="np">+ Fundar partido</button>`)+
-   (ap?`<div class="card" style="margin-bottom:20px;border-color:var(--y)"><b>Pedido de filiação em andamento: ${esc(W.parties.find(x=>x.id===ap.party_id)?.acronym||"")}</b> · ${ap.status==="pendente_lider"?"aguardando avaliação do partido":"entrevista"} <button class="sec" id="gp" style="margin-left:12px">${ap.status==="pendente_lider"?"Ver":"Continuar"}</button></div>`:"")+
+  view(header("",null,"parties")+pageH("Partidos",`${W.parties.length} partidos neste mundo${mine?" · você é filiado ao "+esc(mine.acronym):""}`,`${ap&&ap.status!=="pendente_lider"?`<button class="ivb sm" id="ivb">${ivbText(ap)}</button>`:""}<button id="np">+ Fundar partido</button>`)+
+   (ap&&ap.status==="pendente_lider"?`<div class="card" style="margin-bottom:20px;border-color:var(--y)"><b>Pedido de filiação em andamento: ${esc(W.parties.find(x=>x.id===ap.party_id)?.acronym||"")}</b> · ${ap.status==="pendente_lider"?"aguardando avaliação do partido":"entrevista"} <button class="sec" id="gp" style="margin-left:12px">${ap.status==="pendente_lider"?"Ver":"Continuar"}</button></div>`:"")+
    `<div class="grid wide">${list.map(p=>`<div class="card pcard ${mine?.id===p.id?"me":""}" data-p="${p.id}"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="brand" style="font-size:1.7rem">${esc(p.acronym)}</div><span class="muted">${p.number?"nº "+p.number:"sem número"}</span></div><b>${esc(p.name)}</b><div style="margin:10px 0"><span class="tag b">${esc(IDEO[p.ideology])}</span>${p.status==="em_formacao"?`<span class="tag y">Em formação</span>`:""}${p.is_real?"":`<span class="tag">Criado por jogador</span>`}</div><div class="muted">👥 ${cnt(p.id)} integrante(s)${p.is_real?" · exige "+p.join_min_supporters.toLocaleString("pt-BR")+" apoiadores":""}</div></div>`).join("")}</div>`);
   bindHeader();
   document.querySelectorAll("[data-p]").forEach(el=>el.onclick=()=>partyDetail(el.dataset.p));
