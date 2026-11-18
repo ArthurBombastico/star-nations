@@ -52,7 +52,7 @@ button.full{width:100%;margin-top:18px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111c38;border:1px solid var(--line);padding:12px 20px;border-radius:12px;z-index:20;display:none;max-width:90vw}
 
 /* fundo dinâmico: para usar uma foto sua, defina --bgimg: url("https://...") */
-:root{--bgimg: url("https://upload.wikimedia.org/wikipedia/commons/9/9d/Fachada_do_Congresso_Nacional_%2852232492084%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original")}
+:root{--bgimg:url("https://upload.wikimedia.org/wikipedia/commons/9/9d/Fachada_do_Congresso_Nacional_%2852232492084%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original")}
 #bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
 #bg::before{content:"";position:absolute;inset:-25%;background:radial-gradient(40% 40% at 25% 30%,#18c78b2e,transparent 70%),radial-gradient(35% 35% at 78% 25%,#3b82f633,transparent 70%),radial-gradient(35% 35% at 60% 80%,#f5c54226,transparent 70%);animation:drift 28s ease-in-out infinite alternate;will-change:transform}
 #bg::after{content:"";position:absolute;inset:0;background-image:radial-gradient(1px 1px at 20px 30px,#fff9,transparent),radial-gradient(1.5px 1.5px at 90px 80px,#fff7,transparent),radial-gradient(1px 1px at 160px 20px,#9cf9,transparent),radial-gradient(1px 1px at 130px 110px,#fff6,transparent);background-size:200px 130px;opacity:.5;animation:stars 90s linear infinite}
@@ -118,6 +118,9 @@ input,select,textarea{transition:border-color .2s,box-shadow .2s}
 .mrow[data-c]:hover{background:#ffffff0a}
 .opt{text-align:left;padding:18px 20px;font-weight:500;line-height:1.45;font-size:1.02rem}
 @media(max-width:900px){.mrow{grid-template-columns:1fr 1fr;padding:14px}.mhead{display:none}}
+.ivb{background:linear-gradient(90deg,#f5c542,#ffe08a,#f59e0b,#f5c542);background-size:300% 100%;animation:ivs 3s linear infinite,ivp 2s ease-in-out infinite;color:#2b1d00;font-weight:700;border:0}
+@keyframes ivs{to{background-position:300% 0}}
+@keyframes ivp{50%{box-shadow:0 0 0 6px #f5c54200,0 0 24px #f5c542aa}}
 </style>
 </head>
 <body>
@@ -150,9 +153,9 @@ function fmtGame(){const w=world,d=new Date(w.start_game_date+"T12:00:00");d.set
 function toast(m,ok){ok===true?SND.ok():SND.err();const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(t._t);t._t=setTimeout(()=>t.style.display="none",4000)}
 function view(h){$("#app").innerHTML=h+(_open?"</main></div>":"");_open=false;window.scrollTo(0,0)}
 function avatar(c,cls=""){const ph=(PR[c.user_id]||{}).photo_url;return ph?`<img class="av ${cls}" src="${esc(ph)}" alt="">`:`<div class="av ${cls}">${esc(c.full_name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase())}</div>`}
-function modal(title,body,onOk,okLabel="Confirmar"){
+function modal(title,body,onOk,okLabel="Confirmar",cancelLabel="Cancelar"){
   SND.open();const m=document.createElement("div");m.className="modal";
-  m.innerHTML=`<div class="card"><h3>${title}</h3>${body}<div class="row" style="margin-top:18px"><button class="sec" id="m-cancel">Cancelar</button><button id="m-ok">${okLabel}</button></div></div>`;
+  m.innerHTML=`<div class="card"><h3>${title}</h3>${body}<div class="row" style="margin-top:18px"><button class="sec" id="m-cancel">${cancelLabel}</button><button id="m-ok">${okLabel}</button></div></div>`;
   document.body.appendChild(m);
   m.querySelector("#m-cancel").onclick=()=>m.remove();
   m.querySelector("#m-ok").onclick=async()=>{try{await onOk(m);m.remove()}catch(e){toast(e.message)}};
@@ -182,19 +185,22 @@ function authView(signup=false){
 }
 
 /* ---------- HUB ---------- */
-let _back=null,_open=false;
+let _back=null,_open=false,ivMin=false,_ivHere=false;
 function header0(extra="",back=null){_back=back;return `<div class="top"><div style="display:flex;align-items:center;gap:12px">${back?`<button class="sec" id="back">← Voltar</button>`:""}<div class="brand" style="cursor:pointer" id="home">★ Star Nations</div></div><div class="row" style="flex:none;align-items:center">${extra}<button class="sec" id="snd" title="Som"></button><button class="sec" id="out">Sair</button></div></div>`}
 
 const TABS=[["home","🏠","Início"],["fin","💰","Finanças"],["people","👥","Cidadãos"],["parties","🏛️","Partidos"],["myparty","⭐","Meu partido"],["moves","✊","Movimentos"],["allies","🤝","Aliados"]];
 const HTABS=[["h_play","🎮","Jogar"],["h_servers","🌐","Meus servidores"],["h_friends","👥","Amigos"],["h_settings","⚙️","Configurações"]];
 function header(extra="",back=null,tab=null){
   _open=!!tab;
+  if(tab&&world&&!tab.startsWith("h_")&&!_ivHere&&me){const ap=activeApp();if(ap&&ap.status!=="pendente_lider")extra=`<button class="ivb" id="ivb">${ivbText(ap)}</button>`+extra}
   if(tab&&world&&!tab.startsWith("h_")&&!extra.includes('id="clk"'))extra=`<span class="clock" id="clk">📅 ${esc(fmtGame())}</span>`+extra;
   const owner=world&&world.mode==="server"&&world.owner_id===user.id;
   return header0(extra,back)+(tab?`<div class="shell"><aside class="nav">${(tab.startsWith("h_")?HTABS:TABS.concat(owner?[["manage","⚙️","Gerenciar"]]:[])).map(([k,i,l])=>`<a data-tab="${k}" class="${k===tab?"on":""}"><span>${i}</span>${l}</a>`).join("")}</aside><main>`:"");
 }
 const pageH=(t,sub,right="")=>`<div class="page-h"><div><h2 class="brand">${t}</h2><p class="muted">${sub}</p></div><div class="acts">${right}</div></div>`;
-function bindHeader(){bindSnd();document.querySelectorAll("[data-tab]").forEach(a=>a.onclick=()=>GO[a.dataset.tab]());if(_back&&$("#back"))$("#back").onclick=_back;$("#home").onclick=hub;$("#out").onclick=()=>SB.auth.signOut()}
+const ivbText=ap=>{const left=ap.interview_at?Math.ceil((new Date(ap.interview_at)-Date.now())/1000):0,pn=esc(W.parties.find(x=>x.id===ap.party_id)?.acronym||"partido");return left>0?`⏳ Entrevista do ${pn} em ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")} · abrir`:`🎙️ Entrevista do ${pn} pronta · responder`};
+function bindIvb(){clearInterval(window._ib);const b=$("#ivb");if(!b)return;b.onclick=()=>{const ap=activeApp();if(ap)interviewView(ap.id)};window._ib=setInterval(()=>{const e=$("#ivb"),ap=activeApp();if(!e||!ap){clearInterval(window._ib);return}e.innerHTML=ivbText(ap)},1000)}
+function bindHeader(){bindSnd();bindIvb();document.querySelectorAll("[data-tab]").forEach(a=>a.onclick=()=>GO[a.dataset.tab]());if(_back&&$("#back"))$("#back").onclick=_back;$("#home").onclick=hub;$("#out").onclick=()=>SB.auth.signOut()}
 function hub(){
   world=null;me=null;
   SB.from("profiles").select("*").eq("user_id",user.id).single().then(r=>{if(r.data)PR[user.id]=r.data});
@@ -425,7 +431,9 @@ function mrows(pid,manage){
 }
 async function partiesView(){
   view(loading("Carregando partidos..."));await loadW(true);
-  const mine=partyOf(me.id),ap=activeApp(),cnt=id=>W.pm.filter(x=>x.party_id===id).length+W.npc.filter(x=>x.party_id===id).length;
+  const mine=partyOf(me.id),ap=activeApp();
+  if(ap&&ap.status!=="pendente_lider"&&!ivMin)return interviewView(ap.id);
+  const cnt=id=>W.pm.filter(x=>x.party_id===id).length+W.npc.filter(x=>x.party_id===id).length;
   const list=[...W.parties].sort((a,b)=>a.is_real===b.is_real?a.acronym.localeCompare(b.acronym):a.is_real?1:-1);
   view(header("",null,"parties")+pageH("Partidos",`${W.parties.length} partidos neste mundo${mine?" · você é filiado ao "+esc(mine.acronym):""}`,`<button id="np">+ Fundar partido</button>`)+
    (ap?`<div class="card" style="margin-bottom:20px;border-color:var(--y)"><b>Pedido de filiação em andamento: ${esc(W.parties.find(x=>x.id===ap.party_id)?.acronym||"")}</b> · ${ap.status==="pendente_lider"?"aguardando avaliação do partido":"entrevista"} <button class="sec" id="gp" style="margin-left:12px">${ap.status==="pendente_lider"?"Ver":"Continuar"}</button></div>`:"")+
@@ -464,20 +472,26 @@ function applyParty(id){
 }
 
 /* ----- Entrevista ----- */
+const ivBtns=()=>`<div style="margin-top:26px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center"><button class="sec" id="ivx">Sair (continuar depois)</button><button class="dng" id="ivc">Cancelar entrevista</button></div>`;
+function bindIv(aid){
+  $("#ivx").onclick=()=>{clearInterval(window._iv);ivMin=true;toast("A entrevista continua em andamento. Use o aviso amarelo no topo para voltar.",true);partiesView()};
+  $("#ivc").onclick=()=>modal("Cancelar entrevista",`<p class="muted" style="margin-top:8px">Você perde este pedido de filiação, mas poderá pedir de novo depois. Deseja cancelar a entrevista?</p>`,async()=>{clearInterval(window._iv);const r=await SB.rpc("party_cancel_app",{p_app:aid});if(r.error)throw r.error;await loadW(true);partiesView()},"Sim, cancelar","Manter entrevista");
+}
 async function interviewView(aid){
-  clearInterval(window._iv);
+  clearInterval(window._iv);ivMin=false;
   const r=await SB.rpc("party_interview_state",{p_app:aid});
-  if(r.error){toast(r.error.message);return partiesView()}
+  if(r.error){toast(r.error.message);ivMin=true;return partiesView()}
   const st=r.data,a=W.apps.find(x=>x.id===aid),pn=esc(W.parties.find(x=>x.id===a?.party_id)?.acronym||"partido");
   if(st.status==="agendada"){
-    view(header("",partiesView,"parties")+`<div class="card" style="text-align:center;padding:64px 30px"><div style="font-size:3.2rem">📨</div><h2 style="margin:10px 0">O ${pn} gostou do seu perfil!</h2><p class="muted" style="font-size:1.05rem">O RH do partido vai entrevistar você em</p><div class="brand" style="font-size:3.4rem;margin:12px 0" id="cd">1:00</div><p class="muted">Prepare-se: as perguntas vão testar se você realmente defende os valores do partido.</p><div style="margin-top:22px"><button class="dng" id="cx">Desistir</button></div></div>`);
-    bindHeader();
+    _ivHere=true;
+    view(header("",null,"parties")+`<div class="card" style="text-align:center;padding:64px 30px"><div style="font-size:3.2rem">📨</div><h2 style="margin:10px 0">O ${pn} gostou do seu perfil!</h2><p class="muted" style="font-size:1.05rem">O RH do partido vai entrevistar você em</p><div class="brand" style="font-size:3.4rem;margin:12px 0" id="cd">1:00</div><p class="muted">Prepare-se: as perguntas vão testar se você realmente defende os valores do partido.</p>${ivBtns()}</div>`);
+    _ivHere=false;bindHeader();bindIv(aid);
     const end=Date.now()+st.seconds_left*1000;
     window._iv=setInterval(()=>{const el=$("#cd");if(!el){clearInterval(window._iv);return}const sc=Math.max(0,Math.ceil((end-Date.now())/1000));el.textContent=`${Math.floor(sc/60)}:${String(sc%60).padStart(2,"0")}`;if(sc<=0){clearInterval(window._iv);interviewView(aid)}},500);
-    $("#cx").onclick=async()=>{clearInterval(window._iv);if(await act("party_cancel_app",{p_app:aid},"Você desistiu da entrevista."))partiesView()};
   }else if(st.status==="entrevista"){
-    view(header("",null,"parties")+`<div class="card"><p class="muted">Entrevista do ${pn} · pergunta ${st.index+1} de ${st.total}</p><div class="bar" style="margin:12px 0 26px"><i style="width:${st.index/st.total*100}%;background:linear-gradient(90deg,var(--g),var(--b))"></i></div><h2 style="margin-bottom:8px">🎙️ RH do partido</h2><p style="font-size:1.25rem;margin-bottom:24px">${esc(st.prompt)}</p><div style="display:grid;gap:12px">${st.options.map((o,i)=>`<button class="sec opt" data-o="${i}">${esc(o)}</button>`).join("")}</div></div>`);
-    bindHeader();
+    _ivHere=true;
+    view(header("",null,"parties")+`<div class="card"><p class="muted">Entrevista do ${pn} · pergunta ${st.index+1} de ${st.total}</p><div class="bar" style="margin:12px 0 26px"><i style="width:${st.index/st.total*100}%;background:linear-gradient(90deg,var(--g),var(--b))"></i></div><h2 style="margin-bottom:8px">🎙️ RH do partido</h2><p style="font-size:1.25rem;margin-bottom:24px">${esc(st.prompt)}</p><div style="display:grid;gap:12px">${st.options.map((o,i)=>`<button class="sec opt" data-o="${i}">${esc(o)}</button>`).join("")}</div>${ivBtns()}</div>`);
+    _ivHere=false;bindHeader();bindIv(aid);
     document.querySelectorAll("[data-o]").forEach(b=>b.onclick=async()=>{document.querySelectorAll("[data-o]").forEach(x=>x.disabled=true);const x=await SB.rpc("party_interview_answer",{p_app:aid,p_pos:+b.dataset.o});if(x.error)toast(x.error.message);interviewView(aid)});
   }else if(st.status==="aprovada"){
     await loadW(true);toast("Aprovado! Você agora é filiado ao partido.",true);myPartyView();
