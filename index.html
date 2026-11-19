@@ -122,6 +122,15 @@ input,select,textarea{transition:border-color .2s,box-shadow .2s}
 .ivb.sm{padding:9px 14px;font-size:.85rem}
 @keyframes ivs{to{background-position:300% 0}}
 @keyframes ivp{50%{box-shadow:0 0 0 6px #f5c54200,0 0 24px #f5c542aa}}
+.tl{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:0 0 18px}
+.tl>div{background:#0a1126aa;border:1px solid var(--line);border-radius:12px;padding:10px 12px;position:relative;overflow:hidden}
+.tl>div b{display:block;font-size:.95rem}.tl>div span{color:var(--mu);font-size:.78rem}
+.tl>div.done{border-color:#18c78b77;background:linear-gradient(135deg,#18c78b22,#0a1126aa)}.tl>div.done b{color:var(--g)}
+.num{width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.3rem;background:linear-gradient(135deg,var(--b),var(--g));color:#fff;flex:none}
+.hb{display:grid;grid-template-columns:70px 1fr 64px;align-items:center;gap:8px;font-size:.82rem;margin-top:6px}.hb span{color:var(--mu)}
+.hb i{display:block;height:10px;border-radius:99px;background:linear-gradient(90deg,var(--g),var(--y));animation:grow 1s ease both;transform-origin:left}.hb b{text-align:right}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.ufg{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}.ufg>div{background:#0a1126aa;border:1px solid var(--line);border-radius:10px;padding:8px 10px}.ufg b{display:block}.ufg span{color:var(--mu);font-size:.8rem}
 </style>
 </head>
 <body>
@@ -189,7 +198,7 @@ function authView(signup=false){
 let _back=null,_open=false,ivMin=false,_ivHere=false;
 function header0(extra="",back=null){_back=back;return `<div class="top"><div style="display:flex;align-items:center;gap:12px">${back?`<button class="sec" id="back">← Voltar</button>`:""}<div class="brand" style="cursor:pointer" id="home">★ Star Nations</div></div><div class="row" style="flex:none;align-items:center">${extra}<button class="sec" id="snd" title="Som"></button><button class="sec" id="out">Sair</button></div></div>`}
 
-const TABS=[["home","🏠","Início"],["fin","💰","Finanças"],["people","👥","Cidadãos"],["parties","🏛️","Partidos"],["myparty","⭐","Meu partido"],["moves","✊","Movimentos"],["allies","🤝","Aliados"]];
+const TABS=[["home","🏠","Início"],["fin","💰","Finanças"],["people","👥","Cidadãos"],["parties","🏛️","Partidos"],["myparty","⭐","Meu partido"],["moves","✊","Movimentos"],["allies","🤝","Aliados"],["elec","🗳️","Eleições"]];
 const HTABS=[["h_play","🎮","Jogar"],["h_servers","🌐","Meus servidores"],["h_friends","👥","Amigos"],["h_settings","⚙️","Configurações"]];
 function header(extra="",back=null,tab=null){
   _open=!!tab;
@@ -277,7 +286,7 @@ function profile(c){
   const mine=c.user_id===user.id,owner=world.mode==="server"&&world.owner_id===user.id;
   const date=fmtGame();
   view(header(`<span class="clock" id="clk">📅 ${esc(date)}</span>`,mine?null:()=>people(),mine?"home":"people")+`<div class="card"><div class="prof">${avatar(c)}<div style="flex:1;min-width:200px">
-   <h2>${esc(c.full_name)}</h2>${uname(c)}<div style="margin:6px 0"><span class="tag">${esc(c.role==="cidadao"?"Cidadão":c.role)}</span><span class="tag b">${esc(IDEO[c.ideology])}</span><span class="tag b">${esc(PROF[c.political_profile])}</span></div>
+   <h2>${esc(c.full_name)}</h2>${uname(c)}<div style="margin:6px 0"><span class="tag">${esc(CARGO[c.role]||c.role)}</span><span class="tag b">${esc(IDEO[c.ideology])}</span><span class="tag b">${esc(PROF[c.political_profile])}</span></div>
    <div class="muted">📍 ${esc(c.city_name)} — ${esc(c.state_uf)}</div><div id="aff" style="margin-top:12px"></div></div></div>
    <p style="margin-top:16px">${esc(c.description||"Sem descrição.")}</p>
    <div class="stats"><div class="stat"><b>${brl(c.salary)}</b><span>Salário mensal</span></div><div class="stat"><b>${brl(c.money)}</b><span>Dinheiro</span></div><div class="stat"><b>${c.supporters.toLocaleString("pt-BR")}</b><span>Apoiadores</span></div><div class="stat"><b>${c.reputation}/100</b><span>Reputação</span></div><div class="stat"><b>${brl(c.expenses)}</b><span>Gastos mensais</span></div><div class="stat"><b>${brl(c.salary-c.expenses)}</b><span>Saldo por mês de jogo</span></div></div>
@@ -373,7 +382,7 @@ async function manage(){
 
 /* ---------- ETAPA 2: PARTIDOS, MOVIMENTOS, MANIFESTAÇÕES, ALIADOS ---------- */
 const CAUSES={saude:"Saúde",educacao:"Educação",seguranca:"Segurança",meio_ambiente:"Meio ambiente",economia:"Economia e emprego",direitos:"Direitos e igualdade",moradia:"Moradia",agro:"Agro e campo",religiao:"Fé e valores",outro:"Outra causa"};
-const GO={home:()=>profile(me),fin:()=>finance(),people:()=>people(),parties:()=>partiesView(),myparty:()=>myPartyView(),moves:()=>movesView(),allies:()=>alliesView(),manage:()=>manage(),h_play:()=>hub(),h_servers:()=>hubServers(),h_friends:()=>hubFriends(),h_settings:()=>hubSettings()};
+const GO={home:()=>profile(me),fin:()=>finance(),people:()=>people(),parties:()=>partiesView(),myparty:()=>myPartyView(),moves:()=>movesView(),allies:()=>alliesView(),elec:()=>electionsView(),manage:()=>manage(),h_play:()=>hub(),h_servers:()=>hubServers(),h_friends:()=>hubFriends(),h_settings:()=>hubSettings()};
 let PR={};
 let W={t:0,parties:[],pm:[],mv:[],mm:[],rel:[],ch:{},fr:[],npc:[],apps:[]};
 async function loadW(force){
@@ -618,6 +627,85 @@ function movDetail(id){
   bindHeader();bindRows();
   if($("#mj"))$("#mj").onclick=async()=>{if(await act("join_movement",{p_world:world.id,p_mov:id},"Você entrou no movimento!"))movDetail(id)};
   if($("#ml"))$("#ml").onclick=async()=>{if(await act("leave_movement",{p_world:world.id,p_mov:id},"Você saiu do movimento."))movesView()};
+}
+
+/* ----- Eleições (Etapa 3: Presidência) ----- */
+const CARGO={cidadao:"Cidadão",presidente:"Presidente da República",vice_presidente:"Vice-presidente"};
+const ST_C={ativo:["Candidato",""],segundo_turno:["2º turno",""],eleito:["🏆 Eleito",""],derrotado:["Derrotado","b"],eliminado:["Eliminado","b"]};
+const fdt=d=>new Date(d+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"});
+const nfmt=n=>Number(n||0).toLocaleString("pt-BR");
+async function electionsView(){
+  view(loading("Abrindo a Justiça Eleitoral..."));
+  const [r]=await Promise.all([SB.rpc("election_overview",{p_world:world.id}),loadW(true)]);
+  if(r.error){toast(r.error.message);return profile(me)}
+  const o=r.data,e=o.election,cal=o.calendar,C=o.candidates||[],mc=o.my_candidacy,ph=o.phase,gd=o.game_date;
+  if(o.me&&me)me.money=o.me.money;
+  const PH={pre:"Pré-campanha",convencoes:"Convenções partidárias",campanha:"Campanha do 1º turno",segundo_turno:"Campanha do 2º turno",apurada:"Eleito, aguardando a posse",encerrada:"Mandato iniciado"};
+  const steps=[["filiacao","Prazo de filiação"],["convencoes","Convenções"],["campanha","Campanha"],["turno1","1º turno"],["turno2","2º turno"],["posse","Posse"]];
+  const timeline=`<div class="tl">${steps.map(([k,l])=>`<div class="${cal[k]<=gd?"done":""}"><b>${fdt(cal[k])}</b><span>${l}</span></div>`).join("")}</div>`;
+  const pres=o.president?`<div class="card" style="display:flex;gap:16px;align-items:center;margin-bottom:18px"><div style="font-size:2.4rem">🏛️</div><div style="flex:1"><span class="muted">Presidente da República (eleito em ${o.president.year})</span><h3 style="margin:2px 0">${esc(o.president.name)} <span class="tag">${esc(o.president.party)}</span></h3><span class="muted">Vice: ${esc(o.president.vice||"—")}</span></div>${o.president.character_id?`<button class="sec" id="vp">Ver perfil</button>`:""}</div>`:"";
+  const myP=partyOf(me.id),myMem=W.pm.find(x=>x.character_id===me.id);
+  // painel da fase
+  let panel="";
+  if(ph==="pre"){
+    panel=`<div class="card"><h3>📋 Preparação</h3><p class="muted" style="margin-top:6px">Para concorrer em ${e.year}, é preciso estar filiado a um partido até <b>${fdt(cal.filiacao)}</b>. As candidaturas são registradas nas convenções, de ${fdt(cal.convencoes)} a ${fdt(cal.registro)}.</p>
+    <p style="margin-top:12px">${myP?`✅ Você está filiado ao <b>${esc(myP.acronym)}</b>.`:gd<=cal.filiacao?`⚠️ Você ainda não tem partido. Filie-se até ${fdt(cal.filiacao)} para poder concorrer.`:`⛔ O prazo de filiação já passou. Você ainda pode votar.`}</p>
+    <p class="muted" style="margin-top:12px">Partidos reais exigem apoiadores (grandes: 5.000 · médios: 1.500 · pequenos: 300), reputação 50 e colaboração 50. Em partidos de jogadores, o presidente do partido registra o candidato.</p></div>`;
+  }else if(ph==="convencoes"){
+    if(mc)panel=`<div class="card"><h3>✅ Candidatura registrada</h3><p class="muted" style="margin-top:6px">Você é o candidato do ${esc(mc.party_acronym)} (nº ${mc.number}), com ${esc(mc.vice_name)} de vice. A campanha começa em ${fdt(cal.campanha)}. Fundo eleitoral: <b>${brl(mc.fund)}</b>.</p><div class="acts" style="margin-top:12px"><button class="dng" id="cw">Desistir da candidatura</button></div></div>`;
+    else if(!myP)panel=`<div class="card"><h3>🗳️ Convenções</h3><p class="muted" style="margin-top:6px">Os partidos estão escolhendo seus candidatos. Como você não é filiado, nesta eleição você participa como eleitor.</p></div>`;
+    else{
+      const presOfOwn=!myP.is_real&&myMem?.role==="presidente";
+      const opts=presOfOwn?W.pm.filter(x=>x.party_id===myP.id).map(x=>`<option value="${x.character_id}">${esc(W.ch[x.character_id]?.full_name||"Filiado")}</option>`).join(""):"";
+      const has=C.find(c=>c.party_id===myP.id&&!c.is_npc);
+      panel=`<div class="card"><h3>🗳️ Convenção do ${esc(myP.acronym)}</h3>`+(has?`<p class="muted" style="margin-top:6px">O partido já registrou ${esc(has.name)} como candidato.</p>${presOfOwn?`<div class="acts" style="margin-top:12px"><button class="dng" id="cw">Retirar candidatura do partido</button></div>`:""}`
+       :myP.is_real?`<p class="muted" style="margin-top:6px">Peça a vaga de candidato a presidente do ${esc(myP.acronym)}. Se cumprir os requisitos, você substitui o pré-candidato do partido.</p><div class="acts" style="margin-top:12px"><button id="cr">Registrar minha candidatura</button></div>`
+       :presOfOwn?`<p class="muted" style="margin-top:6px">Como presidente do partido, escolha o candidato (filiado até ${fdt(cal.filiacao)}).</p><label>Candidato</label><select id="cc">${opts}</select><div class="acts" style="margin-top:12px"><button id="cr">Registrar candidatura</button></div>`
+       :`<p class="muted" style="margin-top:6px">Só o presidente do ${esc(myP.acronym)} pode registrar o candidato do partido.</p>`)+`</div>`;
+    }
+  }else if((ph==="campanha"||ph==="segundo_turno")&&mc&&["ativo","segundo_turno"].includes(mc.status)){
+    const eff=Object.entries(o.my_effort||{}).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    panel=`<div class="card"><h3>📣 Sua campanha${ph==="segundo_turno"?" no 2º turno":""}</h3>
+    <div class="stats"><div class="stat"><b>${brl(mc.fund)}</b><span>Fundo eleitoral</span></div><div class="stat"><b>${brl(o.me?.money||0)}</b><span>Seu dinheiro</span></div><div class="stat"><b>${brl(mc.spent)}</b><span>Gasto na campanha</span></div><div class="stat"><b>${nfmt(Math.round(mc.national_effort))}</b><span>Presença nacional</span></div></div>
+    <p class="muted" style="margin-top:12px">Os gastos saem primeiro do fundo eleitoral e depois do seu dinheiro.</p>
+    <div class="row" style="margin-top:12px;align-items:flex-end"><div><label>Estado do comício</label><select id="cu">${(o.states||[]).map(s=>`<option value="${s.uf}">${s.uf} · ${nfmt(s.voters)} eleitores</option>`).join("")}</select></div><button id="cm" style="flex:none">🎤 Comício (R$ 500)</button></div>
+    <div class="acts" style="margin-top:12px;justify-content:flex-start"><button class="sec" id="cp">📺 Propaganda</button><button class="sec" id="ce">🎙️ Entrevista (grátis)</button>${ph==="campanha"?`<button class="dng" id="cw">Desistir</button>`:""}</div>
+    ${eff.length?`<p class="muted" style="margin-top:14px">Sua presença por estado: ${eff.map(([u,v])=>`<span class="tag b">${u} ${Math.round(v)}</span>`).join("")}</p>`:`<p class="muted" style="margin-top:14px">Você ainda não fez comícios. Estados grandes (SP, MG, RJ, BA) valem mais votos.</p>`}</div>`;
+  }
+  // votação
+  const vr=o.vote_round,voteable=vr?C.filter(c=>c.status===(vr===1?"ativo":"segundo_turno")):[];
+  const votedName=o.voted?(o.my_vote?C.find(c=>c.id===o.my_vote)?.name:"Branco"):null;
+  const votePanel=vr?`<div class="card" style="margin-top:18px"><h3>🗳️ Urna — ${vr}º turno</h3><p class="muted" style="margin-top:6px">${o.voted?`Seu voto: <b>${esc(votedName||"—")}</b>. Você pode mudar até a apuração em ${fdt(vr===1?cal.turno1:cal.turno2)}.`:`Você ainda não votou. A apuração é em ${fdt(vr===1?cal.turno1:cal.turno2)}.`} Cada jogador vale 0,3% dos votos válidos, somados no estado do personagem.</p><div class="acts" style="margin-top:12px;justify-content:flex-start"><button class="sec" id="vb">Votar em branco</button></div></div>`:"";
+  // candidatos
+  const showPct=e.round1_done;
+  const ccard=c=>{const [st,sc]=ST_C[c.status]||[c.status,"b"],mine=o.my_vote===c.id&&o.voted;
+    return `<div class="card pcard ${c.character_id===me.id?"me":""}" ${c.character_id?`data-cc="${c.character_id}"`:""}><div style="display:flex;gap:14px;align-items:center"><div class="num">${c.number??"?"}</div><div style="flex:1"><b style="font-size:1.1rem">${esc(c.name)}</b><div class="muted">${esc(c.party_acronym||"")} · ${esc(IDEO[c.ideology]||"")} · vice ${esc(c.vice_name||"—")}</div></div></div>
+    <div style="margin-top:10px"><span class="tag ${sc}">${st}</span>${c.is_npc?`<span class="tag b">NPC</span>`:`<span class="tag">Jogador</span>`}${mine?`<span class="tag">✔ seu voto</span>`:""}</div>
+    <div class="muted" style="margin-top:8px">${nfmt(c.live_supporters)} apoiadores · reputação ${c.live_reputation}${c.home_uf?` · base ${c.home_uf}`:""}</div>
+    ${showPct?`<div style="margin-top:10px">${c.pct1!=null?`<div class="hb"><span>1º turno</span><i style="width:${Math.min(c.pct1,100)}%"></i><b>${String(c.pct1).replace(".",",")}%</b></div>`:""}${c.pct2!=null?`<div class="hb"><span>2º turno</span><i style="width:${Math.min(c.pct2,100)}%"></i><b>${String(c.pct2).replace(".",",")}%</b></div>`:""}</div>`:""}
+    ${voteable.includes(c)?`<button class="${mine?"sec":""}" data-vote="${c.id}" style="margin-top:12px;width:100%">${mine?"Seu voto ✔":"Votar em "+c.number}</button>`:""}</div>`};
+  const candBlock=C.length?`<h3 style="margin:30px 0 14px">Candidatos (${C.length})</h3><div class="grid wide">${C.map(ccard).join("")}</div>`:ph==="pre"?"":`<p class="muted" style="margin-top:20px">Nenhum candidato ainda.</p>`;
+  // resultado por estado
+  let byState="";
+  if(e.round1_done&&o.results.length){
+    const rd=e.round2_done?2:1,rows={},nm=Object.fromEntries(C.map(c=>[c.id,c]));
+    o.results.filter(x=>x.round===rd).forEach(x=>{(rows[x.uf]=rows[x.uf]||[]).push(x)});
+    const ord=(o.states||[]).map(s=>s.uf).filter(u=>rows[u]);
+    byState=`<h3 style="margin:30px 0 14px">Resultado por estado (${rd}º turno)</h3><div class="card"><div class="ufg">${ord.map(u=>{const L=rows[u].sort((a,b)=>b.votes-a.votes),t=L.reduce((s,x)=>s+x.votes,0),w=nm[L[0].candidate_id];return `<div><b>${u}</b><span>${esc(w?.party_acronym||"?")} ${t?Math.round(1000*L[0].votes/t)/10:0}%</span></div>`}).join("")}</div>
+    <p class="muted" style="margin-top:12px">Votos válidos: ${nfmt(rd===2?e.valid2:e.valid1)} · comparecimento aprox.: ${nfmt(rd===2?e.turnout2:e.turnout1)} de ${nfmt(e.electorate)} eleitores.</p></div>`;
+  }
+  view(header("",null,"elec")+pageH(`Eleições ${e.year} · Presidência`,`${PH[ph]} · data do jogo: ${fdt(gd)}`)+pres+timeline+panel+votePanel+candBlock+byState);
+  bindHeader();
+  if($("#vp"))$("#vp").onclick=()=>openChar(o.president.character_id);
+  document.querySelectorAll("[data-cc]").forEach(x=>x.onclick=()=>openChar(x.dataset.cc));
+  const run=async(fn,args,b)=>{if(b)b.disabled=true;const r=await SB.rpc(fn,{p_world:world.id,...args});if(r.error){if(b)b.disabled=false;return toast(r.error.message)}toast(r.data.msg,true);electionsView()};
+  if($("#cr"))$("#cr").onclick=()=>run("cand_register",{p_char:$("#cc")?$("#cc").value:null},$("#cr"));
+  if($("#cw"))$("#cw").onclick=()=>modal("Desistir da candidatura",`<p class="muted" style="margin-top:8px">A candidatura será retirada e os votos já dados nela serão anulados.</p>`,async()=>{const r=await SB.rpc("cand_withdraw",{p_world:world.id});if(r.error)throw r.error;toast(r.data.msg,true);electionsView()},"Desistir");
+  if($("#cm"))$("#cm").onclick=()=>run("campaign_act",{p_kind:"comicio",p_uf:$("#cu").value},$("#cm"));
+  if($("#ce"))$("#ce").onclick=()=>run("campaign_act",{p_kind:"entrevista"},$("#ce"));
+  if($("#cp"))$("#cp").onclick=()=>modal("Propaganda na TV e na internet",`<p class="muted" style="margin-top:8px">Cada R$ 100 rende 1 ponto de presença nacional. Mínimo de R$ 1.000.</p><label>Valor (R$)</label><input id="pa" type="number" min="1000" step="500" value="5000">`,async m=>{const r=await SB.rpc("campaign_act",{p_world:world.id,p_kind:"propaganda",p_amount:Number(m.querySelector("#pa").value)});if(r.error)throw r.error;toast(r.data.msg,true);electionsView()},"Veicular");
+  document.querySelectorAll("[data-vote]").forEach(b=>b.onclick=e=>{e.stopPropagation();run("cast_vote",{p_candidate:b.dataset.vote},b)});
+  if($("#vb"))$("#vb").onclick=()=>run("cast_vote",{p_candidate:null},$("#vb"));
 }
 
 /* ----- Amigos e aliados ----- */
