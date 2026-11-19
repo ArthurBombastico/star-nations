@@ -131,6 +131,9 @@ input,select,textarea{transition:border-color .2s,box-shadow .2s}
 .hb i{display:block;height:10px;border-radius:99px;background:linear-gradient(90deg,var(--g),var(--y));animation:grow 1s ease both;transform-origin:left}.hb b{text-align:right}
 @keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .ufg{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}.ufg>div{background:#0a1126aa;border:1px solid var(--line);border-radius:10px;padding:8px 10px}.ufg b{display:block}.ufg span{color:var(--mu);font-size:.8rem}
+.ntc{border:1px solid #f5c54277;background:linear-gradient(135deg,#f5c54218,#0a1126cc);border-radius:14px;padding:12px 16px;margin-bottom:18px;animation:rise .5s ease both}
+.ntc>div{padding:6px 0;border-bottom:1px solid #ffffff10}.ntc>div:last-of-type{border:0}.ntc .nh{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ntc p{margin-top:4px}.ntc button{margin-top:8px;padding:6px 14px}
+.subt{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px}.subt button{padding:8px 14px}
 </style>
 </head>
 <body>
@@ -204,13 +207,18 @@ function header(extra="",back=null,tab=null){
   _open=!!tab;
   if(tab&&world&&!tab.startsWith("h_")&&!_ivHere&&tab!=="parties"&&me){const ap=activeApp();if(ap&&ap.status!=="pendente_lider")extra=`<button class="ivb" id="ivb">${ivbText(ap)}</button>`+extra}
   if(tab&&world&&!tab.startsWith("h_")&&!extra.includes('id="clk"'))extra=`<span class="clock" id="clk">📅 ${esc(fmtGame())}</span>`+extra;
-  const owner=world&&world.mode==="server"&&world.owner_id===user.id;
-  return header0(extra,back)+(tab?`<div class="shell"><aside class="nav">${(tab.startsWith("h_")?HTABS:TABS.concat(owner?[["manage","⚙️","Gerenciar"]]:[])).map(([k,i,l])=>`<a data-tab="${k}" class="${k===tab?"on":""}"><span>${i}</span>${l}</a>`).join("")}</aside><main>`:"");
+  const owner=!!staffLv();
+  return header0(extra,back)+(tab?`<div class="shell"><aside class="nav">${(tab.startsWith("h_")?HTABS:TABS.concat(owner?[["manage","⚙️","Gerenciar"]]:[])).map(([k,i,l])=>`<a data-tab="${k}" class="${k===tab?"on":""}"><span>${i}</span>${l}</a>`).join("")}</aside><main>${tab.startsWith("h_")?"":noticeBar()}`:"");
 }
+function staffLv(){if(!world||world.mode!=="server")return null;if(world.owner_id===user.id)return "dono";const m=W.world===world.id&&(W.mods||[]).find(x=>x.user_id===user.id);return m?m.level:null}
+const seenKey=()=>"sn_seen_"+world.id;
+function noticeBar(){if(!world||world.mode!=="server"||W.world!==world.id)return "";let seen=0;try{seen=+localStorage.getItem(seenKey())||0}catch(e){}
+  const nu=(W.notices||[]).filter(n=>new Date(n.created_at).getTime()>seen&&n.author_id!==user.id).slice(0,3);if(!nu.length)return "";
+  return `<div class="ntc">${nu.map(n=>`<div><div class="nh"><span class="tag ${n.author_role==="Dono"?"":"b"}">${n.author_role==="Dono"?"👑 Dono":"🛡️ Moderador"}</span><b>${esc(n.author_name)}</b><span class="muted">· ${n.game_date?dshort(n.game_date):""}</span></div><p>${esc(n.body)}</p></div>`).join("")}<button class="sec" id="ntok">Entendi</button></div>`}
 const pageH=(t,sub,right="")=>`<div class="page-h"><div><h2 class="brand">${t}</h2><p class="muted">${sub}</p></div><div class="acts">${right}</div></div>`;
 const ivbText=ap=>{const left=ap.interview_at?Math.ceil((new Date(ap.interview_at)-Date.now())/1000):0,pn=esc(W.parties.find(x=>x.id===ap.party_id)?.acronym||"partido");return left>0?`⏳ Entrevista do ${pn} em ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")} · abrir`:`🎙️ Entrevista do ${pn} pronta · responder`};
 function bindIvb(){clearInterval(window._ib);const b=$("#ivb");if(!b)return;b.onclick=()=>{const ap=activeApp();if(ap)interviewView(ap.id)};window._ib=setInterval(()=>{const e=$("#ivb"),ap=activeApp();if(!e||!ap){clearInterval(window._ib);return}e.innerHTML=ivbText(ap)},1000)}
-function bindHeader(){bindSnd();bindIvb();document.querySelectorAll("[data-tab]").forEach(a=>a.onclick=()=>GO[a.dataset.tab]());if(_back&&$("#back"))$("#back").onclick=_back;$("#home").onclick=hub;$("#out").onclick=()=>SB.auth.signOut()}
+function bindHeader(){bindSnd();bindIvb();if($("#ntok"))$("#ntok").onclick=()=>{try{localStorage.setItem(seenKey(),String(Math.max(...W.notices.map(n=>new Date(n.created_at).getTime()))))}catch(e){}$(".ntc").remove()};document.querySelectorAll("[data-tab]").forEach(a=>a.onclick=()=>GO[a.dataset.tab]());if(_back&&$("#back"))$("#back").onclick=_back;$("#home").onclick=hub;$("#out").onclick=()=>SB.auth.signOut()}
 function hub(){
   world=null;me=null;
   SB.from("profiles").select("*").eq("user_id",user.id).single().then(r=>{if(r.data)PR[user.id]=r.data});
@@ -237,7 +245,7 @@ async function servers(){
   view(header(`<button id="cs">+ Criar servidor</button>`,hub)+`<h2 class="brand">Servidores</h2><div class="card list" style="margin-top:14px">${
     (data||[]).map(w=>`<div data-id="${w.id}"><div style="flex:1"><b>${w.is_private?"🔒":"🌐"} ${esc(w.name)}</b><div class="muted">${esc(w.description||"Sem descrição")} · 1 ano = ${w.year_real_days} dias</div></div>${w.owner_id===user.id?`<button class="sec" data-mg="${w.id}" title="Gerenciar">⚙️</button>`:""}<button class="sec">Entrar</button></div>`).join("")||`<p class="muted" style="padding:12px">Nenhum servidor ainda. Crie o primeiro!</p>`}</div>`);
   bindHeader();
-  $("#cs").onclick=()=>modal("Criar servidor",`<label>Nome</label><input id="sn" maxlength="60"><label>Descrição</label><textarea id="sd" maxlength="500"></textarea><label>Senha (deixe vazio para servidor aberto)</label><input id="sp" type="text"><label>Duração de 1 ano de jogo</label><select id="sy"><option value="7">7 dias reais</option><option value="14" selected>14 dias reais</option><option value="28">28 dias reais</option></select>`,async m=>{
+  $("#cs").onclick=()=>modal("Criar servidor",`<label>Nome</label><input id="sn" maxlength="60"><label>Descrição</label><textarea id="sd" maxlength="500"></textarea><label>Senha (deixe vazio para servidor aberto)</label><input id="sp" type="text"><label>Duração de 1 ano de jogo</label><select id="sy"><option value="4">4 dias reais</option><option value="6">6 dias reais</option><option value="7">7 dias reais</option><option value="12">12 dias reais</option><option value="14" selected>14 dias reais</option></select>`,async m=>{
     const r=await SB.rpc("create_world",{p_name:m.querySelector("#sn").value,p_description:m.querySelector("#sd").value,p_mode:"server",p_password:m.querySelector("#sp").value||null,p_year_real_days:+m.querySelector("#sy").value});
     if(r.error)throw r.error;const w=(await SB.from("worlds").select("*").eq("id",r.data)).data[0];setTimeout(()=>enter(w),50);
   },"Criar");
@@ -283,7 +291,7 @@ async function creator(){
 }
 
 function profile(c){
-  const mine=c.user_id===user.id,owner=world.mode==="server"&&world.owner_id===user.id;
+  const mine=c.user_id===user.id,owner=!!staffLv();
   const date=fmtGame();
   view(header(`<span class="clock" id="clk">📅 ${esc(date)}</span>`,mine?null:()=>people(),mine?"home":"people")+`<div class="card"><div class="prof">${avatar(c)}<div style="flex:1;min-width:200px">
    <h2>${esc(c.full_name)}</h2>${uname(c)}<div style="margin:6px 0"><span class="tag">${esc(CARGO[c.role]||c.role)}</span><span class="tag b">${esc(IDEO[c.ideology])}</span><span class="tag b">${esc(PROF[c.political_profile])}</span></div>
@@ -315,10 +323,11 @@ async function people(q=""){
 const ACT={
  trabalhar:["💼","Horas extras","Renda extra de trabalho.","+ cerca de 10% do salário",1],
  panfletar:["📣","Panfletagem","Converse com moradores e conquiste apoio.","- R$ 50 · + apoiadores",1],
- debate:["🗣️","Debate nas redes","Defenda suas ideias online.","+ apoiadores · risco à reputação",1],
- doacao:["🤝","Pedir doações","Arrecade com quem apoia você. Poucos apoiadores = risco de constrangimento.","Depende de apoiadores e reputação",6],
- evento:["🎤","Apresentação / evento","Palestra, show ou ato público. Pode lucrar ou fracassar.","Custa R$ 80 · lucro, apoio e reputação variam",3]};
-const actPanel=()=>`<h3 style="margin:28px 0 12px">Ações do cidadão</h3><div class="grid">${Object.entries(ACT).map(([k,a])=>`<div class="stat"><b>${a[0]} ${a[1]}</b><span>${a[2]}</span><div class="muted" style="margin:6px 0 4px">${a[3]}</div><div class="muted" style="margin-bottom:10px">Recarga: ${a[4]} h</div><button data-act="${k}" style="width:100%">Executar</button></div>`).join("")}</div>`;
+ debate:["🗣️","Debate nas redes","Defenda suas ideias online.","+ apoiadores · risco à reputação",2],
+ doacao:["🤝","Pedir doações","Arrecade com quem apoia você. Poucos apoiadores = risco de constrangimento.","Depende de apoiadores e reputação",3],
+ evento:["🎤","Apresentação / evento","Palestra, show ou ato público. Pode lucrar ou fracassar.","Custa R$ 80 · lucro, apoio e reputação variam",7]};
+const cdMs=d=>d*Number(world.year_real_days)/365*864e5,cdTxt=d=>{const m=Math.round(cdMs(d)/6e4);return m<60?m+" min":(m/60).toFixed(m<600?1:0).replace(".",",")+" h"};
+const actPanel=()=>`<h3 style="margin:28px 0 12px">Ações do cidadão</h3><div class="grid">${Object.entries(ACT).map(([k,a])=>`<div class="stat"><b>${a[0]} ${a[1]}</b><span>${a[2]}</span><div class="muted" style="margin:6px 0 4px">${a[3]}</div><div class="muted" style="margin-bottom:10px">Recarga: ${a[4]===1?"1 dia":a[4]===7?"1 semana":a[4]+" dias"} de jogo (~${cdTxt(a[4])})</div><button data-act="${k}" style="width:100%">Executar</button></div>`).join("")}</div>`;
 async function bindActions(){
   document.querySelectorAll("[data-act]").forEach(b=>b.onclick=async()=>{
     b.disabled=true;
@@ -326,11 +335,11 @@ async function bindActions(){
     if(r.error){b.disabled=false;return toast(r.error.message)}
     me=r.data.character;toast(r.data.msg,true);profile(me);
   });
-  const {data}=await SB.from("action_log").select("action,created_at").eq("character_id",me.id).gte("created_at",new Date(Date.now()-6*36e5).toISOString());
+  const {data}=await SB.from("action_log").select("action,created_at").eq("character_id",me.id).gte("created_at",new Date(Date.now()-cdMs(7)).toISOString());
   const seen={};
   (data||[]).sort((x,y)=>new Date(y.created_at)-new Date(x.created_at)).forEach(l=>{
     if(seen[l.action]||!ACT[l.action])return;seen[l.action]=1;
-    const left=ACT[l.action][4]*36e5-(Date.now()-new Date(l.created_at));
+    const left=cdMs(ACT[l.action][4])-(Date.now()-new Date(l.created_at));
     const b=document.querySelector(`[data-act="${l.action}"]`);
     if(b&&left>0){b.disabled=true;b.textContent=`Disponível em ${Math.max(1,Math.ceil(left/6e4))} min`}
   });
@@ -345,7 +354,7 @@ async function finance(){
   const rr=await SB.rpc("settle_me",{p_world:world.id});if(rr.data?.id)me=rr.data;
   const [{data:inv},{data:led},{data:roles}]=await Promise.all([
     SB.from("investments").select("*").eq("character_id",me.id),
-    SB.from("ledger").select("*").eq("character_id",me.id).order("created_at",{ascending:false}).order("month_idx",{ascending:false}).limit(25),
+    SB.from("ledger").select("*").eq("character_id",me.id).order("game_date",{ascending:false}).order("created_at",{ascending:false}).limit(6),
     SB.from("role_salaries").select("*").order("sort")]);
   const pos=Object.fromEntries((inv||[]).map(i=>[i.kind,i]));
   const total=(inv||[]).reduce((t,i)=>t+Number(i.value),0);
@@ -354,7 +363,7 @@ async function finance(){
   <h3 style="margin:28px 0 12px">Custo de vida (${brl(me.expenses)}/mês)</h3><div class="card">${COST.map(([n,p])=>`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>${n}</span><b>${brl(me.expenses*p)}</b></div><div style="height:6px;border-radius:9px;background:#0a1126;margin-top:4px"><div style="width:${p*250}%;max-width:100%;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--g),var(--b))"></div></div></div>`).join("")}<p class="muted" style="margin-top:12px">Despesas básicas variam por estado. Gastos voluntários, como campanhas, são cobrados à parte.</p></div>
   <h3 style="margin:28px 0 12px">Investimentos</h3><div class="grid">${Object.entries(INV).map(([k,v])=>{const i=pos[k],val=i?Number(i.value):0,gain=i?val-Number(i.invested):0;return `<div class="stat"><b>${v[0]} ${v[1]}</b><span>${v[2]}</span><div style="margin:10px 0"><b>${brl(val)}</b><div class="muted" style="color:${gain>=0?"var(--g)":"var(--r)"}">${i?(gain>=0?"+":"")+brl(gain)+" sobre o aplicado":"Sem aplicação"}</div></div><div class="row"><button data-inv="${k}">Investir</button><button class="sec" data-red="${k}" ${val>0?"":"disabled"}>Resgatar</button></div></div>`}).join("")}</div>
   <p class="muted" style="margin-top:10px">Rendimentos são calculados a cada mês de jogo e variam de forma aleatória. Rentabilidade passada não garante ganhos futuros. Sem impostos nesta versão.</p>
-  <h3 style="margin:28px 0 12px">Histórico</h3><div class="card list">${(led||[]).map(l=>`<div style="cursor:default"><div style="flex:1"><b>${esc(l.label)}</b><div class="muted">${dshort(l.game_date)}</div></div><b style="color:${l.amount>=0?"var(--g)":"var(--r)"}">${l.amount>=0?"+":""}${brl(l.amount)}</b></div>`).join("")||`<p class="muted" style="padding:12px">Ainda sem movimentações. O primeiro salário cai no próximo mês de jogo.</p>`}</div>
+  <div class="page-h" style="margin:28px 0 12px"><h3>Últimas movimentações</h3><div class="acts"><button class="sec" id="lall">Ver todas</button></div></div><div class="card list">${(led||[]).map(ledRow).join("")||`<p class="muted" style="padding:12px">Ainda sem movimentações. O primeiro salário cai no próximo mês de jogo.</p>`}</div>
   <h3 style="margin:28px 0 12px">Salários por cargo</h3><div class="card list">${(roles||[]).map(r=>`<div style="cursor:default"><div style="flex:1"><b>${esc(r.label)}</b><div class="muted">${esc(r.note||"")}</div></div><b>${brl(r.salary)}${r.exact?"":" <span class=\"muted\">aprox.</span>"}</b></div>`).join("")}</div>`);
   bindHeader();
   const op=(k,red)=>modal(red?"Resgatar":"Investir",`<p class="muted" style="margin-top:8px">${INV[k][1]}${red?" · aplicado: "+brl(pos[k]?.value||0):" · mínimo R$ 100,00 · disponível: "+brl(me.money)}</p><label>Valor (R$)${red?" — vazio resgata tudo":""}</label><input id="va" type="number" min="1" step="0.01">`,async m=>{
@@ -363,21 +372,77 @@ async function finance(){
     if(r.error)throw r.error;me=r.data.character;toast(r.data.msg,true);finance()},red?"Resgatar":"Investir");
   document.querySelectorAll("[data-inv]").forEach(b=>b.onclick=()=>op(b.dataset.inv,false));
   document.querySelectorAll("[data-red]").forEach(b=>b.onclick=()=>op(b.dataset.red,true));
+  $("#lall").onclick=ledgerView;
+}
+const ledRow=l=>`<div style="cursor:default"><div style="flex:1"><b>${esc(l.label)}</b><div class="muted">${dshort(l.game_date)}</div></div><b style="color:${l.amount>=0?"var(--g)":"var(--r)"}">${l.amount>=0?"+":""}${brl(l.amount)}</b></div>`;
+async function ledgerView(){
+  view(loading("Abrindo o extrato..."));
+  const {data}=await SB.from("ledger").select("*").eq("character_id",me.id).order("game_date",{ascending:false}).order("created_at",{ascending:false}).limit(1000);
+  const L=data||[],by={};L.forEach(l=>{const k=l.game_date.slice(0,7);(by[k]=by[k]||[]).push(l)});
+  const ent=L.filter(l=>l.amount>0).reduce((t,l)=>t+Number(l.amount),0),sai=L.filter(l=>l.amount<0).reduce((t,l)=>t+Number(l.amount),0);
+  const mes=k=>new Date(k+"-15T12:00:00").toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
+  view(header("",finance,"fin")+pageH("Extrato completo","Movimentações do ano corrente do jogo. O extrato recomeça a cada 1º de janeiro.")+
+   `<div class="stats" style="margin-bottom:18px"><div class="stat"><b style="color:var(--g)">${brl(ent)}</b><span>Entradas no ano</span></div><div class="stat"><b style="color:var(--r)">${brl(sai)}</b><span>Saídas no ano</span></div><div class="stat"><b>${brl(ent+sai)}</b><span>Resultado</span></div><div class="stat"><b>${L.length}</b><span>Movimentações</span></div></div>`+
+   (Object.keys(by).map(k=>`<h3 style="margin:24px 0 10px;text-transform:capitalize">${mes(k)}</h3><div class="card list">${by[k].map(ledRow).join("")}</div>`).join("")||empty("Ainda sem movimentações neste ano.")));
+  bindHeader();
 }
 
 /* ---------- GESTÃO DO SERVIDOR (líder) ---------- */
-async function manage(){
-  view(loading("Carregando membros..."));
-  const [{data:mem},{data:chars}]=await Promise.all([SB.from("world_members").select("*").eq("world_id",world.id).order("joined_at"),SB.from("characters").select("user_id,full_name,city_name,state_uf").eq("world_id",world.id)]);
-  const cm=Object.fromEntries((chars||[]).map(c=>[c.user_id,c]));
-  view(header("",me?null:servers,me?"manage":null)+`<h2 class="brand">Gerenciar: ${esc(world.name)}</h2><p class="muted">${(mem||[]).length} membro(s)</p>
-  <div class="card list" style="margin-top:14px">${(mem||[]).map(m=>{const c=cm[m.user_id];return `<div style="cursor:default"><div style="flex:1"><b>${esc(c?c.full_name:"Jogador sem personagem")}</b> ${m.role==="owner"?`<span class="tag">Líder</span>`:""}<div class="muted">${c?esc(c.city_name)+"/"+esc(c.state_uf):"Ainda não criou personagem"}</div></div>${m.role==="owner"?"":`<button class="sec" data-kick="${m.user_id}">Expulsar</button><button class="dng" data-ban="${m.user_id}">Banir</button>`}</div>`}).join("")}</div>
-  <div class="card" style="margin-top:20px;border-color:#7f1d1d"><h3>Zona de perigo</h3><p class="muted" style="margin:6px 0 14px">Excluir o servidor apaga todos os personagens e dados dele. Não dá para desfazer.</p><button class="dng" id="del">Excluir servidor</button></div>`);
+async function manage(sub){
+  const lv=staffLv();if(!lv)return me?profile(me):hub();
+  sub=sub||(lv==="dono"?"membros":"avisos");
+  view(loading("Carregando gestão do servidor..."));
+  const [{data:mem},{data:chars}]=await Promise.all([SB.from("world_members").select("*").eq("world_id",world.id).order("joined_at"),SB.from("characters").select("user_id,full_name,city_name,state_uf").eq("world_id",world.id),loadW(true)]);
+  const cm=Object.fromEntries((chars||[]).map(c=>[c.user_id,c])),mods=W.mods||[],modOf=u=>mods.find(m=>m.user_id===u);
+  const nm=u=>esc(cm[u]?.full_name||(PR[u]?"@"+PR[u].username:"Jogador"));
+  const tabs=[["membros","👥 Membros",lv==="dono"],["mods","🛡️ Moderadores",lv==="dono"],["avisos","📢 Avisos",true],["tempo","⏱️ Tempo",lv==="dono"||lv==="lider"]].filter(t=>t[2]);
+  if(!tabs.find(t=>t[0]===sub))sub=tabs[0][0];
+  const LV={dono:"Dono",lider:"Moderador líder",assistente:"Moderador assistente"};
+  let body="";
+  if(sub==="membros"){
+    body=`<p class="muted">${(mem||[]).length} membro(s)</p><div class="card list" style="margin-top:14px">${(mem||[]).map(m=>{const c=cm[m.user_id],md=modOf(m.user_id);return `<div style="cursor:default"><div style="flex:1"><b>${esc(c?c.full_name:"Jogador sem personagem")}</b> ${m.role==="owner"?`<span class="tag">👑 Dono</span>`:md?`<span class="tag b">🛡️ ${LV[md.level]}</span>`:""}<div class="muted">${c?esc(c.city_name)+"/"+esc(c.state_uf):"Ainda não criou personagem"}</div></div>${m.role==="owner"?"":`<button class="sec" data-kick="${m.user_id}">Expulsar</button><button class="dng" data-ban="${m.user_id}">Banir</button>`}</div>`}).join("")}</div>
+    <div class="card" style="margin-top:20px;border-color:#7f1d1d"><h3>Zona de perigo</h3><p class="muted" style="margin:6px 0 14px">Excluir o servidor apaga todos os personagens e dados dele. Não dá para desfazer.</p><button class="dng" id="del">Excluir servidor</button></div>`;
+  }else if(sub==="mods"){
+    const cand=(mem||[]).filter(m=>m.role!=="owner"&&!modOf(m.user_id));
+    body=`<p class="muted">Até 5 moderadores. <b>Assistente</b>: envia avisos. <b>Líder</b>: envia avisos e controla o tempo do jogo.</p>
+    <div class="card list" style="margin-top:14px">${mods.map(m=>`<div style="cursor:default"><div style="flex:1"><b>${nm(m.user_id)}</b><div class="muted">${LV[m.level]}</div></div><select data-lvl="${m.user_id}" style="width:auto"><option value="assistente" ${m.level==="assistente"?"selected":""}>Assistente</option><option value="lider" ${m.level==="lider"?"selected":""}>Líder</option></select><button class="dng" data-unmod="${m.user_id}">Remover</button></div>`).join("")||empty("Nenhum moderador nomeado.")}</div>
+    ${mods.length<5?(cand.length?`<div class="card" style="margin-top:18px"><h3>Nomear moderador (${mods.length}/5)</h3><div class="row" style="margin-top:10px;align-items:flex-end"><div><label>Membro</label><select id="mu">${cand.map(m=>`<option value="${m.user_id}">${nm(m.user_id)}</option>`).join("")}</select></div><div><label>Nível</label><select id="ml"><option value="assistente">Assistente (só avisos)</option><option value="lider">Líder (avisos e tempo)</option></select></div><button id="madd" style="flex:none">Nomear</button></div></div>`:empty("Não há outros membros para nomear."))
+    :`<p class="muted" style="margin-top:14px">Limite de 5 moderadores atingido.</p>`}`;
+  }else if(sub==="avisos"){
+    body=`<div class="card"><h3>Enviar aviso a todos</h3><p class="muted" style="margin-top:4px">Aparece no topo da tela de cada jogador, com seu nome, seu cargo e a data do jogo.</p><textarea id="nb" maxlength="300" style="margin-top:10px" placeholder="Ex.: Eleições chegando! Filiem-se até 02/04."></textarea><div class="row" style="align-items:center;margin-top:10px"><span class="muted" id="nc">0/300</span><button id="nsend" style="flex:none">📢 Enviar aviso</button></div></div>
+    <h3 style="margin:26px 0 12px">Avisos enviados</h3><div class="card list">${(W.notices||[]).map(n=>`<div style="cursor:default;align-items:flex-start"><div style="flex:1"><div><span class="tag ${n.author_role==="Dono"?"":"b"}">${n.author_role==="Dono"?"👑 Dono":"🛡️ Moderador"}</span><b>${esc(n.author_name)}</b> <span class="muted">· ${n.game_date?dshort(n.game_date):""}</span></div><p style="margin-top:4px">${esc(n.body)}</p></div>${lv==="dono"||n.author_id===user.id?`<button class="sec" data-ndel="${n.id}">Apagar</button>`:""}</div>`).join("")||empty("Nenhum aviso ainda.")}</div>`;
+  }else{
+    const sp=Number(world.year_real_days);
+    body=`<div class="card"><h3>Velocidade do tempo</h3><p class="muted" style="margin-top:4px">Hoje: 1 ano de jogo = <b>${sp} dias reais</b> (1 mês ≈ ${(sp*24/12).toFixed(0)} h). A data atual do jogo é mantida.</p><div class="row" style="margin-top:10px;align-items:flex-end"><div><label>1 ano de jogo dura</label><select id="tsp">${[4,6,7,12,14].map(d=>`<option value="${d}" ${d===sp?"selected":""}>${d} dias reais</option>`).join("")}</select></div><button id="tspb" style="flex:none">Aplicar velocidade</button></div></div>
+    <div class="card" style="margin-top:18px"><h3>Pular para uma data</h3><p class="muted" style="margin-top:4px">Hoje no jogo: <b>${esc(fmtGame())}</b>. Só é possível avançar (até 10 anos). Salários e despesas dos meses pulados são lançados quando cada jogador entrar.</p><div class="row" style="margin-top:10px;align-items:flex-end"><div><label>Nova data</label><input id="tdt" type="date"></div><button id="tdtb" style="flex:none">⏩ Avançar</button></div></div>`;
+  }
+  view(header("",me?null:servers,me?"manage":null)+pageH(`Gerenciar: ${esc(world.name)}`,`Seu cargo: ${LV[lv]}`)+`<div class="subt">${tabs.map(([k,l])=>`<button class="${k===sub?"":"sec"}" data-sub="${k}">${l}</button>`).join("")}</div>`+body);
   bindHeader();
-  const rm=(uid,ban)=>{const c=cm[uid];modal(ban?"Banir jogador":"Expulsar jogador",`<p class="muted" style="margin-top:8px">${esc(c?c.full_name:"Este jogador")} perderá o personagem neste servidor${ban?" e não poderá voltar":", mas poderá entrar de novo"}.</p>`,async()=>{const r=await SB.rpc("kick_member",{p_world:world.id,p_user:uid,p_ban:ban});if(r.error)throw r.error;toast("Jogador removido.",true);manage()},ban?"Banir":"Expulsar")};
-  document.querySelectorAll("[data-kick]").forEach(b=>b.onclick=()=>rm(b.dataset.kick,false));
-  document.querySelectorAll("[data-ban]").forEach(b=>b.onclick=()=>rm(b.dataset.ban,true));
-  $("#del").onclick=()=>modal("Excluir servidor",`<p class="muted" style="margin-top:8px">Digite o nome do servidor para confirmar:</p><b>${esc(world.name)}</b><input id="cf" style="margin-top:10px">`,async m=>{if(m.querySelector("#cf").value.trim()!==world.name)throw new Error("O nome digitado não confere.");const r=await SB.rpc("delete_world",{p_world:world.id});if(r.error)throw r.error;toast("Servidor excluído.",true);hub()},"Excluir");
+  document.querySelectorAll("[data-sub]").forEach(b=>b.onclick=()=>manage(b.dataset.sub));
+  const rpc=async(fn,args,after)=>{const r=await SB.rpc(fn,args);if(r.error){toast(r.error.message);return null}if(r.data?.msg)toast(r.data.msg,true);after&&after(r.data);return r.data};
+  if(sub==="membros"){
+    const rm=(uid,ban)=>{const c=cm[uid];modal(ban?"Banir jogador":"Expulsar jogador",`<p class="muted" style="margin-top:8px">${esc(c?c.full_name:"Este jogador")} perderá o personagem neste servidor${ban?" e não poderá voltar":", mas poderá entrar de novo"}.</p>`,async()=>{const r=await SB.rpc("kick_member",{p_world:world.id,p_user:uid,p_ban:ban});if(r.error)throw r.error;if(modOf(uid))await SB.rpc("mod_set",{p_world:world.id,p_user:uid,p_level:null});toast("Jogador removido.",true);manage("membros")},ban?"Banir":"Expulsar")};
+    document.querySelectorAll("[data-kick]").forEach(b=>b.onclick=()=>rm(b.dataset.kick,false));
+    document.querySelectorAll("[data-ban]").forEach(b=>b.onclick=()=>rm(b.dataset.ban,true));
+    $("#del").onclick=()=>modal("Excluir servidor",`<p class="muted" style="margin-top:8px">Digite o nome do servidor para confirmar:</p><b>${esc(world.name)}</b><input id="cf" style="margin-top:10px">`,async m=>{if(m.querySelector("#cf").value.trim()!==world.name)throw new Error("O nome digitado não confere.");const r=await SB.rpc("delete_world",{p_world:world.id});if(r.error)throw r.error;toast("Servidor excluído.",true);hub()},"Excluir");
+  }else if(sub==="mods"){
+    if($("#madd"))$("#madd").onclick=()=>rpc("mod_set",{p_world:world.id,p_user:$("#mu").value,p_level:$("#ml").value},()=>manage("mods"));
+    document.querySelectorAll("[data-lvl]").forEach(s=>s.onchange=()=>rpc("mod_set",{p_world:world.id,p_user:s.dataset.lvl,p_level:s.value},()=>manage("mods")));
+    document.querySelectorAll("[data-unmod]").forEach(b=>b.onclick=()=>rpc("mod_set",{p_world:world.id,p_user:b.dataset.unmod,p_level:null},()=>manage("mods")));
+  }else if(sub==="avisos"){
+    $("#nb").oninput=()=>$("#nc").textContent=$("#nb").value.length+"/300";
+    $("#nsend").onclick=()=>{const t=$("#nb").value.trim();if(!t)return toast("Escreva a mensagem.");rpc("notice_post",{p_world:world.id,p_body:t},()=>manage("avisos"))};
+    document.querySelectorAll("[data-ndel]").forEach(b=>b.onclick=()=>rpc("notice_delete",{p_id:b.dataset.ndel},()=>manage("avisos")));
+  }else{
+    const upd=d=>{if(d?.world)world=Object.assign(world,d.world);manage("tempo")};
+    $("#tspb").onclick=()=>{const v=+$("#tsp").value;if(v===Number(world.year_real_days))return toast("Essa já é a velocidade atual.");rpc("world_set_time",{p_world:world.id,p_year_days:v},upd)};
+    $("#tdtb").onclick=async()=>{const to=$("#tdt").value;if(!to)return toast("Escolha a data.");
+      const r=await SB.rpc("world_time_check",{p_world:world.id,p_to:to});if(r.error)return toast(r.error.message);
+      const ev=r.data.events||[],go=async()=>{const x=await SB.rpc("world_set_time",{p_world:world.id,p_to:to});if(x.error)throw x.error;toast(x.data.msg,true);upd(x.data)};
+      modal(ev.length?"⚠️ Datas importantes no caminho":"Avançar o tempo",
+        `<p class="muted" style="margin-top:8px">De ${dshort(r.data.from)} para <b>${dshort(r.data.to)}</b>.</p>`+(ev.length?`<p style="margin-top:10px">Este pulo passa por:</p><ul style="margin:8px 0 0 18px">${ev.map(e=>`<li><b>${dshort(e.date)}</b> · ${esc(e.label)}</li>`).join("")}</ul><p class="muted" style="margin-top:10px">Essas etapas acontecerão sem que os jogadores possam agir nelas (filiação, candidaturas, campanha, votos). Quer mesmo pular para essa data?</p>`:`<p class="muted" style="margin-top:8px">Nenhuma data importante no caminho. Confirmar?</p>`),
+        go,ev.length?"Sim, pular mesmo assim":"Avançar","Não, cancelar")};
+  }
 }
 
 /* ---------- ETAPA 2: PARTIDOS, MOVIMENTOS, MANIFESTAÇÕES, ALIADOS ---------- */
@@ -388,9 +453,10 @@ let W={t:0,parties:[],pm:[],mv:[],mm:[],rel:[],ch:{},fr:[],npc:[],apps:[]};
 async function loadW(force){
   if(!force&&W.world===world.id&&Date.now()-W.t<15000)return W;
   const q=t=>SB.from(t).select("*").eq("world_id",world.id);
-  const [p,pm,mv,mm,rl,ch,pr,fr,np,ap]=await Promise.all([q("parties"),q("party_members"),q("movements"),q("movement_members"),q("relations"),SB.from("characters").select("id,user_id,full_name,city_name,state_uf,ideology,supporters,reputation").eq("world_id",world.id).limit(500),SB.from("profiles").select("user_id,username,photo_url").limit(2000),SB.from("friendships").select("*"),q("party_npcs"),q("party_applications")]);
+  const srv=world.mode==="server",none=Promise.resolve({data:[]});
+  const [p,pm,mv,mm,rl,ch,pr,fr,np,ap,md,nt]=await Promise.all([q("parties"),q("party_members"),q("movements"),q("movement_members"),q("relations"),SB.from("characters").select("id,user_id,full_name,city_name,state_uf,ideology,supporters,reputation").eq("world_id",world.id).limit(500),SB.from("profiles").select("user_id,username,photo_url").limit(2000),SB.from("friendships").select("*"),q("party_npcs"),q("party_applications"),srv?q("world_moderators"):none,srv?SB.from("world_notices").select("*").eq("world_id",world.id).order("created_at",{ascending:false}).limit(30):none]);
   (pr.data||[]).forEach(x=>PR[x.user_id]=x);
-  W={t:Date.now(),world:world.id,parties:p.data||[],pm:pm.data||[],mv:mv.data||[],mm:mm.data||[],rel:rl.data||[],fr:fr.data||[],npc:np.data||[],apps:ap.data||[],ch:Object.fromEntries((ch.data||[]).map(c=>[c.id,c]))};
+  W={t:Date.now(),world:world.id,parties:p.data||[],pm:pm.data||[],mv:mv.data||[],mm:mm.data||[],rel:rl.data||[],fr:fr.data||[],npc:np.data||[],apps:ap.data||[],mods:md.data||[],notices:nt.data||[],ch:Object.fromEntries((ch.data||[]).map(c=>[c.id,c]))};
   return W;
 }
 const uname=c=>PR[c.user_id]?`<div class="muted">@${esc(PR[c.user_id].username)}</div>`:"";
@@ -648,9 +714,9 @@ async function electionsView(){
   // painel da fase
   let panel="";
   if(ph==="pre"){
-    panel=`<div class="card"><h3>📋 Preparação</h3><p class="muted" style="margin-top:6px">Para concorrer em ${e.year}, é preciso estar filiado a um partido até <b>${fdt(cal.filiacao)}</b>. As candidaturas são registradas nas convenções, de ${fdt(cal.convencoes)} a ${fdt(cal.registro)}.</p>
+    panel=`<div class="card"><h3>📋 Preparação</h3><p class="muted" style="margin-top:6px">Para concorrer em ${e.year}, é preciso estar filiado a um partido até <b>${fdt(cal.filiacao)}</b>. As candidaturas são registradas nas convenções, de ${fdt(cal.convencoes)} a ${fdt(cal.registro)}: o botão <b>Registrar candidatura</b> aparece aqui nessa época.</p>
     <p style="margin-top:12px">${myP?`✅ Você está filiado ao <b>${esc(myP.acronym)}</b>.`:gd<=cal.filiacao?`⚠️ Você ainda não tem partido. Filie-se até ${fdt(cal.filiacao)} para poder concorrer.`:`⛔ O prazo de filiação já passou. Você ainda pode votar.`}</p>
-    <p class="muted" style="margin-top:12px">Partidos reais exigem apoiadores (grandes: 5.000 · médios: 1.500 · pequenos: 300), reputação 50 e colaboração 50. Em partidos de jogadores, o presidente do partido registra o candidato.</p></div>`;
+    <p class="muted" style="margin-top:12px">Partidos reais exigem apoiadores (grandes: 10.000 · médios: 4.000 · pequenos: 1.000), reputação 75 e colaboração 75 no partido. Em partidos de jogadores, o presidente do partido registra o candidato.</p></div>`;
   }else if(ph==="convencoes"){
     if(mc)panel=`<div class="card"><h3>✅ Candidatura registrada</h3><p class="muted" style="margin-top:6px">Você é o candidato do ${esc(mc.party_acronym)} (nº ${mc.number}), com ${esc(mc.vice_name)} de vice. A campanha começa em ${fdt(cal.campanha)}. Fundo eleitoral: <b>${brl(mc.fund)}</b>.</p><div class="acts" style="margin-top:12px"><button class="dng" id="cw">Desistir da candidatura</button></div></div>`;
     else if(!myP)panel=`<div class="card"><h3>🗳️ Convenções</h3><p class="muted" style="margin-top:6px">Os partidos estão escolhendo seus candidatos. Como você não é filiado, nesta eleição você participa como eleitor.</p></div>`;
