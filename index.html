@@ -138,6 +138,12 @@ input,select,textarea{transition:border-color .2s,box-shadow .2s}
 .brmap{width:100%;height:auto;display:block}.brmap path{stroke:#070b16;stroke-width:.8;cursor:pointer;transition:filter .2s,fill-opacity .3s}.brmap path:hover{filter:brightness(1.3)}.brmap path.sel{stroke:#fff;stroke-width:2.2}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .mrow{margin:10px 0}.mh{display:flex;justify-content:space-between;gap:8px;font-size:.9rem}.mbar{height:8px;border-radius:99px;background:#0a1126;margin:4px 0 2px;overflow:hidden}.mbar i{display:block;height:100%;border-radius:99px;animation:grow .8s ease both;transform-origin:left}
+.livebtn{position:fixed;top:74px;left:16px;z-index:60;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;border:1px solid #93c5fd;border-radius:999px;padding:9px 16px;font-weight:700;box-shadow:0 6px 24px #1d4ed866;animation:pulseb 2s ease-in-out infinite}
+@keyframes pulseb{0%,100%{box-shadow:0 6px 24px #1d4ed866}50%{box-shadow:0 6px 34px #3b82f6cc}}
+@media(max-width:700px){.livebtn{top:62px;left:10px;padding:7px 12px;font-size:.8rem}}
+.livedrawer{position:fixed;top:0;left:0;bottom:0;width:390px;max-width:92vw;z-index:70;background:#070b16f2;backdrop-filter:blur(10px);border-right:1px solid #3b82f6aa;padding:18px;overflow-y:auto;animation:slidein .35s ease both;box-shadow:12px 0 40px #0008}
+@keyframes slidein{from{transform:translateX(-100%)}to{transform:none}}
+.scrollbox{max-height:68vh;overflow-y:auto}.ufbtn{cursor:pointer;transition:border-color .2s}.ufbtn:hover,.list>div.mine,.ufbtn.mine{border-color:#18c78b}
 </style>
 </head>
 <body>
@@ -212,7 +218,7 @@ function header(extra="",back=null,tab=null){
   if(tab&&world&&!tab.startsWith("h_")&&!_ivHere&&tab!=="parties"&&me){const ap=activeApp();if(ap&&ap.status!=="pendente_lider")extra=`<button class="ivb" id="ivb">${ivbText(ap)}</button>`+extra}
   if(tab&&world&&!tab.startsWith("h_")&&!extra.includes('id="clk"'))extra=`<span class="clock" id="clk">📅 ${esc(fmtGame())}</span>`+extra;
   const owner=!!staffLv();
-  return header0(extra,back)+(tab?`<div class="shell"><aside class="nav">${(tab.startsWith("h_")?HTABS:TABS.concat(owner?[["manage","⚙️","Gerenciar"]]:[])).map(([k,i,l])=>`<a data-tab="${k}" class="${k===tab?"on":""}"><span>${i}</span>${l}</a>`).join("")}</aside><main>${tab.startsWith("h_")?"":noticeBar()}`:"");
+  return header0(extra,back)+(tab?`<div class="shell"><aside class="nav">${(tab.startsWith("h_")?HTABS:TABS.concat(owner?[["manage","⚙️","Gerenciar"]]:[])).map(([k,i,l])=>`<a data-tab="${k}" class="${k===tab?"on":""}"><span>${i}</span>${l}</a>`).join("")}</aside><main>${tab.startsWith("h_")?"":noticeBar()+liveBtn()}`:"");
 }
 function staffLv(){if(!world||world.mode!=="server")return null;if(world.owner_id===user.id)return "dono";const m=W.world===world.id&&(W.mods||[]).find(x=>x.user_id===user.id);return m?m.level:null}
 const seenKey=()=>"sn_seen_"+world.id;
@@ -222,7 +228,7 @@ function noticeBar(){if(!world||world.mode!=="server"||W.world!==world.id)return
 const pageH=(t,sub,right="")=>`<div class="page-h"><div><h2 class="brand">${t}</h2><p class="muted">${sub}</p></div><div class="acts">${right}</div></div>`;
 const ivbText=ap=>{const left=ap.interview_at?Math.ceil((new Date(ap.interview_at)-Date.now())/1000):0,pn=esc(W.parties.find(x=>x.id===ap.party_id)?.acronym||"partido");return left>0?`⏳ Entrevista do ${pn} em ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")} · abrir`:`🎙️ Entrevista do ${pn} pronta · responder`};
 function bindIvb(){clearInterval(window._ib);const b=$("#ivb");if(!b)return;b.onclick=()=>{const ap=activeApp();if(ap)interviewView(ap.id)};window._ib=setInterval(()=>{const e=$("#ivb"),ap=activeApp();if(!e||!ap){clearInterval(window._ib);return}e.innerHTML=ivbText(ap)},1000)}
-function bindHeader(){bindSnd();bindIvb();if($("#ntok"))$("#ntok").onclick=()=>{try{localStorage.setItem(seenKey(),String(Math.max(...W.notices.map(n=>new Date(n.created_at).getTime()))))}catch(e){}$(".ntc").remove()};document.querySelectorAll("[data-tab]").forEach(a=>a.onclick=()=>GO[a.dataset.tab]());if(_back&&$("#back"))$("#back").onclick=_back;$("#home").onclick=hub;$("#out").onclick=()=>SB.auth.signOut()}
+function bindHeader(){bindSnd();bindIvb();if($("#livebtn"))$("#livebtn").onclick=openLiveDrawer;if($("#ntok"))$("#ntok").onclick=()=>{try{localStorage.setItem(seenKey(),String(Math.max(...W.notices.map(n=>new Date(n.created_at).getTime()))))}catch(e){}$(".ntc").remove()};document.querySelectorAll("[data-tab]").forEach(a=>a.onclick=()=>GO[a.dataset.tab]());if(_back&&$("#back"))$("#back").onclick=_back;$("#home").onclick=hub;$("#out").onclick=()=>SB.auth.signOut()}
 function hub(){
   world=null;me=null;saveNav("h_play");
   SB.from("profiles").select("*").eq("user_id",user.id).single().then(r=>{if(r.data)PR[user.id]=r.data});
@@ -703,7 +709,7 @@ function movDetail(id){
 }
 
 /* ----- Eleições (Etapa 3: Presidência) ----- */
-const CARGO={cidadao:"Cidadão",presidente:"Presidente da República",vice_presidente:"Vice-presidente"};
+const CARGO={cidadao:"Cidadão",presidente:"Presidente da República",vice_presidente:"Vice-presidente",governador:"Governador",senador:"Senador",deputado_federal:"Deputado federal",deputado_estadual:"Deputado estadual",prefeito:"Prefeito",vereador:"Vereador"};
 const ST_C={ativo:["Candidato",""],segundo_turno:["2º turno",""],eleito:["🏆 Eleito",""],derrotado:["Derrotado","b"],eliminado:["Eliminado","b"]};
 const fdt=d=>new Date(d+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"});
 const nfmt=n=>Number(n||0).toLocaleString("pt-BR");
@@ -713,7 +719,7 @@ async function electionsView(){
   if(r.error){toast(r.error.message);return profile(me)}
   const o=r.data,e=o.election,cal=o.calendar,C=o.candidates||[],mc=o.my_candidacy,ph=o.phase,gd=o.game_date;
   if(o.me&&me)me.money=o.me.money;
-  const PH={pre:"Pré-campanha",convencoes:"Convenções partidárias",campanha:"Campanha do 1º turno",segundo_turno:"Campanha do 2º turno",apurada:"Eleito, aguardando a posse",encerrada:"Mandato iniciado"};
+  const PH={pre:"Pré-campanha",convencoes:"Convenções partidárias",campanha:"Campanha do 1º turno",segundo_turno:"Campanha do 2º turno",apurada:"Eleito, aguardando a posse",encerrada:"Mandato iniciado",apuracao:"🔵 Apuração em andamento"};
   const steps=[["filiacao","Prazo de filiação"],["convencoes","Convenções"],["campanha","Campanha"],["turno1","1º turno"],["turno2","2º turno"],["posse","Posse"]];
   const timeline=`<div class="tl">${steps.map(([k,l])=>`<div class="${cal[k]<=gd?"done":""}"><b>${fdt(cal[k])}</b><span>${l}</span></div>`).join("")}</div>`;
   const pres=o.president?`<div class="card" style="display:flex;gap:16px;align-items:center;margin-bottom:18px"><div style="font-size:2.4rem">🏛️</div><div style="flex:1"><span class="muted">Presidente da República (eleito em ${o.president.year})</span><h3 style="margin:2px 0">${esc(o.president.name)} <span class="tag">${esc(o.president.party)}</span></h3><span class="muted">Vice: ${esc(o.president.vice||"—")}</span></div>${o.president.character_id?`<button class="sec" id="vp">Ver perfil</button>`:""}</div>`:"";
@@ -761,8 +767,8 @@ async function electionsView(){
   // resultado por estado
   const mRounds=[1,2].filter(r=>(o.results||[]).some(x=>x.round===r));
   const byState=mRounds.length?`<div style="margin-top:30px">${mapHTML(mRounds)}</div>`:"";
-  view(header("",null,"elec")+pageH(`Eleições ${e.year} · Presidência`,`${PH[ph]} · data do jogo: ${fdt(gd)}`)+pres+timeline+panel+votePanel+candBlock+byState);
-  bindHeader();
+  view(header("",null,"elec")+pageH(`Eleições ${e.year} · Presidência`,`${PH[ph]} · data do jogo: ${fdt(gd)}`)+elecTabs("presidente")+pres+timeline+(ph==="apuracao"?`<div class="card" id="livebox" style="margin-bottom:18px"></div>`:"")+panel+votePanel+candBlock+byState);
+  bindHeader();bindElecTabs();if($("#livebox"))liveBlock($("#livebox"),"presidente","BR","Brasil");
   if(mRounds.length)bindMap(o.results,C,mRounds);
   if($("#vp"))$("#vp").onclick=()=>openChar(o.president.character_id);
   document.querySelectorAll("[data-cc]").forEach(x=>x.onclick=()=>openChar(x.dataset.cc));
@@ -849,6 +855,157 @@ async function resume(){
   let n=null;try{n=JSON.parse(localStorage.getItem(navKey())||"null")}catch(e){}
   if(n?.w){view(loading("Voltando para onde você parou..."));const {data}=await SB.from("worlds").select("*").eq("id",n.w).maybeSingle();if(data)return enter(data,n.t)}
   hub();if(n?.t&&n.t.startsWith("h_")&&n.t!=="h_play"&&GO[n.t])GO[n.t]();
+}
+
+/* ----- Eleições: todos os cargos ----- */
+const OFF={presidente:"Presidente",governador:"Governador",senador:"Senador",deputado_federal:"Dep. federal",deputado_estadual:"Dep. estadual",prefeito:"Prefeito",vereador:"Vereador"};
+const OFF_L={presidente:"Presidente da República",governador:"Governador",senador:"Senador",deputado_federal:"Deputado federal",deputado_estadual:"Deputado estadual",prefeito:"Prefeito",vereador:"Vereador"};
+const ST2={ativo:["Candidato","b"],segundo_turno:["2º turno",""],eleito:["🏆 Eleito",""],nao_eleito:["Não eleito","b"],derrotado:["Derrotado","b"],eliminado:["Eliminado","b"]};
+const PROPO=o=>["deputado_federal","deputado_estadual","vereador"].includes(o),MUNI=o=>["prefeito","vereador"].includes(o);
+const isoD=d=>d.toISOString().slice(0,10);
+function elT1(y){const d=new Date(Date.UTC(y,9,1));d.setUTCDate(1+(7-d.getUTCDay())%7);return isoD(d)}
+function elT2(y){const d=new Date(Date.UTC(y,9,31));d.setUTCDate(31-d.getUTCDay());return isoD(d)}
+const elCycle=gd=>{const y=+gd.slice(0,4);return y%2===0?y:y+1};
+function apuracaoHoje(){if(!world||!world.started_at)return false;const gd=gameISO(),y=+gd.slice(0,4);return y%2===0&&(gd===elT1(y)||gd===elT2(y))}
+let CITIES=null;
+async function loadCities(){if(!CITIES){const {data}=await SB.from("cities").select("ibge_id,name,uf,voters,council_seats").order("population",{ascending:false});CITIES=data||[]}return CITIES}
+const stName=uf=>((states||[]).find(s=>s.uf.trim()===uf)||{}).name||uf;
+function officePhase(g,o){const f=(g.offices||{})[o],c=g.calendar,gd=g.game_date;if(!f)return "sem";
+  if(f.inaug)return "encerrada";if(f.r2&&!f.pub2)return "apuracao";if(f.pub1&&f.r2needed&&!f.pub2)return "segundo_turno";if(f.pub1)return "apurada";if(f.r1)return "apuracao";
+  if(gd>=c.campanha)return "campanha";if(gd>=c.convencoes)return "convencoes";return "pre"}
+const PH2={pre:"Pré-campanha",convencoes:"Convenções partidárias",campanha:"Campanha do 1º turno",apuracao:"🔵 Apuração em andamento",segundo_turno:"Campanha do 2º turno",apurada:"Resultado publicado",encerrada:"Mandatos iniciados",sem:"Sem eleição neste ano"};
+function elecTabs(cur,g){const kind=g?g.kind:(elCycle(gameISO())%4===2?"geral":"municipal");
+  const offs=kind==="geral"?["presidente","governador","senador","deputado_federal","deputado_estadual"]:["presidente","prefeito","vereador"];
+  return `<div class="subt">${offs.map(o=>`<button class="${o===cur?"":"sec"}" data-off="${o}">${OFF[o]}</button>`).join("")}</div>`}
+function bindElecTabs(year){document.querySelectorAll("[data-off]").forEach(b=>b.onclick=()=>b.dataset.off==="presidente"?electionsView():officeView(b.dataset.off,year))}
+const REQ={governador:[5000,65],senador:[5000,65],deputado_federal:[1500,55],deputado_estadual:[800,50],prefeito:["0,2% dos eleitores da cidade",55],vereador:["0,03% dos eleitores da cidade",40]};
+
+async function officeView(office,year){
+  view(loading("Abrindo a Justiça Eleitoral..."));
+  const [r]=await Promise.all([SB.rpc("elections_general",{p_world:world.id,p_year:year||null}),loadW(true),loadCities()]);
+  if(r.error){toast(r.error.message);return electionsView()}
+  const g=r.data,cal=g.calendar,f=(g.offices||{})[office],ph=officePhase(g,office),y=g.year,m=g.me||{},muni=MUNI(office);
+  if(!f){view(header("",null,"elec")+pageH(`Eleições ${y}`,"")+elecTabs(office,g)+`<div class="card"><p class="muted">Não há eleição para ${OFF_L[office].toLowerCase()} em ${y}.</p></div>`);bindHeader();return bindElecTabs(year)}
+  const steps=[["filiacao","Prazo de filiação"],["convencoes","Convenções"],["campanha","Campanha"],["turno1","1º turno"],["turno2","2º turno"],["posse","Posse"]];
+  const timeline=`<div class="tl">${steps.map(([k,l])=>`<div class="${cal[k]<=g.game_date?"done":""}"><b>${fdt(cal[k])}</b><span>${l}</span></div>`).join("")}</div>`;
+  const myScope=muni?(m.city_ok?String(m.city_id):null):m.uf,myScopeName=muni?(m.city_ok?m.city_name:null):stName(m.uf);
+  const mc=(g.my_candidacies||[]).find(c=>c.office===office);
+  const otherC=(g.my_candidacies||[]).find(c=>c.office!==office);
+  // painel de candidatura
+  let panel="";
+  if(mc&&["ativo","segundo_turno"].includes(mc.status)&&(ph==="campanha"||ph==="segundo_turno")&&(mc.status==="ativo"||ph==="segundo_turno")){
+    panel=`<div class="card"><h3>📣 Sua campanha a ${OFF_L[office].toLowerCase()} (nº ${mc.number})</h3>
+    <div class="stats"><div class="stat"><b>${brl(mc.fund)}</b><span>Fundo eleitoral</span></div><div class="stat"><b>${brl(m.money||0)}</b><span>Seu dinheiro</span></div><div class="stat"><b>${brl(mc.spent)}</b><span>Gasto</span></div><div class="stat"><b>${nfmt(Math.round(mc.national_effort))}</b><span>Presença</span></div></div>
+    <div class="acts" style="margin-top:12px;justify-content:flex-start"><button id="cm">🎤 Comício em ${esc(muni?myScopeName||"":mc.scope_uf)} (R$ 500)</button><button class="sec" id="cp">📺 Propaganda</button><button class="sec" id="ce">🎙️ Entrevista</button>${ph==="campanha"?`<button class="dng" id="cw" data-cid="${mc.id}">Desistir</button>`:""}</div></div>`;
+  }else if(mc){
+    panel=`<div class="card"><h3>✅ Você é candidato a ${OFF_L[office].toLowerCase()} (nº ${mc.number}, ${esc(mc.party_acronym)})</h3><p class="muted" style="margin-top:6px">${ph==="convencoes"||ph==="pre"?`A campanha começa em ${fdt(cal.campanha)}. Fundo eleitoral: <b>${brl(mc.fund)}</b>.`:`Situação: ${(ST2[mc.status]||[mc.status])[0]}`}</p>${ph==="convencoes"?`<div class="acts" style="margin-top:12px"><button class="dng" id="cw" data-cid="${mc.id}">Desistir da candidatura</button></div>`:""}</div>`;
+  }else if(ph==="pre"||ph==="convencoes"){
+    const pt=m.party,rq=REQ[office];
+    const reqTxt=`Partidos reais (partido grande): ${typeof rq[0]==="number"?nfmt(rq[0])+" apoiadores":rq[0]}, reputação ${rq[1]} e colaboração ${rq[1]}. Partidos médios e pequenos pedem menos apoiadores (40% e 10%).`;
+    let body="";
+    if(ph==="pre")body=`<p class="muted" style="margin-top:6px">Filie-se até <b>${fdt(cal.filiacao)}</b>. O registro de candidaturas abre nas convenções (${fdt(cal.convencoes)} a ${fdt(cal.registro)}), aqui nesta tela.</p>`;
+    else if(otherC)body=`<p class="muted" style="margin-top:6px">Você já é candidato a ${OFF_L[otherC.office].toLowerCase()} nesta eleição. Cada pessoa concorre a um cargo só.</p>`;
+    else if(!pt)body=`<p class="muted" style="margin-top:6px">Você não é filiado a um partido, então participa desta eleição como eleitor.</p>`;
+    else if(muni&&!m.city_ok)body=`<p class="muted" style="margin-top:6px">${esc(m.city_name||"Sua cidade")} não está entre as 500 cidades com eleição municipal no jogo.</p>`;
+    else if(!pt.is_real&&pt.role==="presidente"){const opts=W.pm.filter(x=>x.party_id===pt.id).map(x=>`<option value="${x.character_id}">${esc(W.ch[x.character_id]?.full_name||"Filiado")}</option>`).join("");
+      body=`<p class="muted" style="margin-top:6px">Como presidente do ${esc(pt.acronym)}, registre os candidatos do partido em ${esc(myScopeName||"")}.</p><div class="row" style="margin-top:10px;align-items:flex-end"><div><label>Filiado</label><select id="cc">${opts}</select></div><button id="cr" style="flex:none">Registrar candidatura</button></div>`}
+    else if(!pt.is_real)body=`<p class="muted" style="margin-top:6px">Só o presidente do ${esc(pt.acronym)} registra candidaturas do partido.</p>`;
+    else body=`<p class="muted" style="margin-top:6px">Concorra pelo ${esc(pt.acronym)} em ${esc(myScopeName||"")}. ${PROPO(office)?"Você entra na lista do partido no lugar de um pré-candidato.":"Você substitui o pré-candidato do partido."}</p><div class="acts" style="margin-top:12px;justify-content:flex-start"><button id="cr">Registrar minha candidatura</button></div>`;
+    panel=`<div class="card"><h3>🗳️ Candidatura a ${OFF_L[office].toLowerCase()}</h3>${body}<p class="muted" style="margin-top:10px;font-size:.82rem">${reqTxt}</p></div>`;
+  }
+  // urna
+  const vr=ph==="campanha"?1:ph==="segundo_turno"?2:null,myVote=g.my_votes?g.my_votes[office+"_"+vr]:undefined;
+  const urna=vr&&myScope?`<div class="card" style="margin-top:18px"><h3>🗳️ Sua urna — ${OFF_L[office]} (${vr}º turno)</h3><p class="muted" style="margin-top:6px">Você vota em ${esc(myScopeName)}. ${myVote!==undefined?(myVote?"Voto registrado. Você pode mudar até a apuração.":"Você votou em branco."):"Você ainda não votou."}</p><div class="acts" style="margin-top:12px;justify-content:flex-start"><button id="gomy">Ver candidatos e votar</button><button class="sec" id="vb">Votar em branco</button></div></div>`:"";
+  const live=ph==="apuracao"&&myScope?`<div class="card" style="margin-top:18px" id="livebox"></div>`:"";
+  // lista de estados ou cidades
+  let list="";
+  if(muni){
+    list=`<h3 style="margin:28px 0 12px">Cidades (${CITIES.length})</h3><div class="row" style="margin-bottom:12px"><input id="cq" placeholder="Buscar cidade..."><select id="cu" style="max-width:140px"><option value="">Todos os estados</option>${[...new Set(CITIES.map(c=>c.uf))].sort().map(u=>`<option>${u}</option>`).join("")}</select></div><div class="card list scrollbox" id="clist"></div>`;
+  }else{
+    list=`<h3 style="margin:28px 0 12px">Estados</h3><div class="ufg">${(states||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<div class="ufbtn ${s.uf.trim()===m.uf?"mine":""}" data-sc="${s.uf.trim()}"><b>${s.uf.trim()}</b><span>${esc(s.name)}</span></div>`).join("")}</div>`;
+  }
+  const yrs=(g.years||[]).filter(x=>x!==y),yearSel=yrs.length?`<select id="ysel" style="width:auto">${[...new Set([y,...(g.years||[])])].sort((a,b)=>b-a).map(x=>`<option value="${x}" ${x===y?"selected":""}>${x}</option>`).join("")}</select>`:"";
+  view(header("",null,"elec")+pageH(`Eleições ${y} · ${OFF_L[office]}`,`${PH2[ph]} · data do jogo: ${fdt(g.game_date)}`,yearSel)+elecTabs(office,g)+timeline+panel+urna+live+list);
+  bindHeader();bindElecTabs(year);
+  if($("#ysel"))$("#ysel").onchange=()=>{const v=+$("#ysel").value;officeView((v%4===2)===(g.kind==="geral")?office:(v%4===2?"governador":"prefeito"),v)};
+  const run=async(fn,args,b)=>{if(b)b.disabled=true;const x=await SB.rpc(fn,{p_world:world.id,...args});if(x.error){if(b)b.disabled=false;return toast(x.error.message)}toast(x.data.msg,true);officeView(office,year)};
+  if($("#cr"))$("#cr").onclick=()=>run("cand_register_office",{p_office:office,p_char:$("#cc")?$("#cc").value:null},$("#cr"));
+  if($("#cw"))$("#cw").onclick=()=>modal("Desistir da candidatura",`<p class="muted" style="margin-top:8px">A candidatura será retirada e os votos dados nela serão anulados.</p>`,async()=>{const x=await SB.rpc("cand_withdraw_office",{p_world:world.id,p_candidate:$("#cw").dataset.cid});if(x.error)throw x.error;toast(x.data.msg,true);officeView(office,year)},"Desistir");
+  if($("#cm"))$("#cm").onclick=()=>run("campaign_act",{p_kind:"comicio"},$("#cm"));
+  if($("#ce"))$("#ce").onclick=()=>run("campaign_act",{p_kind:"entrevista"},$("#ce"));
+  if($("#cp"))$("#cp").onclick=()=>modal("Propaganda",`<p class="muted" style="margin-top:8px">Cada R$ 100 rende 1 ponto de presença. Mínimo de R$ 1.000.</p><label>Valor (R$)</label><input id="pa" type="number" min="1000" step="500" value="5000">`,async md=>{const x=await SB.rpc("campaign_act",{p_world:world.id,p_kind:"propaganda",p_amount:Number(md.querySelector("#pa").value)});if(x.error)throw x.error;toast(x.data.msg,true);officeView(office,year)},"Veicular");
+  if($("#vb"))$("#vb").onclick=()=>run("cast_vote_office",{p_office:office,p_candidate:null},$("#vb"));
+  if($("#gomy"))$("#gomy").onclick=()=>scopeView(office,myScope,g);
+  if($("#livebox"))liveBlock($("#livebox"),office,myScope,myScopeName);
+  document.querySelectorAll("[data-sc]").forEach(x=>x.onclick=()=>scopeView(office,x.dataset.sc,g));
+  if(muni){const draw=()=>{const q=($("#cq").value||"").toLowerCase(),u=$("#cu").value;const L=CITIES.filter(c=>(!u||c.uf===u)&&(!q||c.name.toLowerCase().includes(q))).slice(0,150);
+      $("#clist").innerHTML=L.map(c=>`<div data-ci="${c.ibge_id}" class="${String(c.ibge_id)===myScope?"mine":""}"><div style="flex:1"><b>${esc(c.name)}</b> <span class="muted">${c.uf}</span><div class="muted">${nfmt(c.voters)} eleitores · ${c.council_seats} vereadores${c.voters>200000?" · prefeito com 2º turno":""}</div></div><span class="muted">›</span></div>`).join("")||empty("Nenhuma cidade encontrada.");
+      document.querySelectorAll("[data-ci]").forEach(x=>x.onclick=()=>scopeView(office,x.dataset.ci,g))};
+    $("#cq").oninput=draw;$("#cu").onchange=draw;draw()}
+}
+
+async function scopeView(office,scope,g){
+  view(loading("Abrindo a apuração..."));
+  const f=g.offices[office],muni=MUNI(office),ph=officePhase(g,office),m=g.me||{};
+  const city=muni?(CITIES||[]).find(c=>String(c.ibge_id)===String(scope)):null,name=muni?(city?city.name+" ("+city.uf+")":scope):stName(scope)+` (${scope})`;
+  let q=SB.from("candidates").select("id,name,number,party_acronym,ideology,status,votes1,pct1,votes2,pct2,is_npc,character_id,vice_name").eq("election_id",f.id).neq("status","desistiu");
+  q=muni?q.eq("city_id",+scope):q.eq("scope_uf",scope);
+  const {data}=await q.order("votes2",{ascending:false,nullsFirst:false}).order("votes1",{ascending:false,nullsFirst:false}).order("number");
+  const C=data||[],mine=muni?String(m.city_id)===String(scope):m.uf===scope;
+  const vr=ph==="campanha"?1:ph==="segundo_turno"?2:null,canVote=vr&&mine,myVote=g.my_votes?g.my_votes[office+"_"+vr]:undefined;
+  const seats=office==="deputado_federal"?null:office==="vereador"?city?.council_seats:office==="senador"?(g.year%8===2?2:1):null;
+  let partyBox="";
+  if(PROPO(office)&&f.pub1){const by={};C.filter(c=>c.status==="eleito").forEach(c=>by[c.party_acronym]=(by[c.party_acronym]||0)+1);
+    const tot=Object.values(by).reduce((a,b)=>a+b,0);partyBox=`<div class="card" style="margin-bottom:14px"><h3>Cadeiras por partido (${tot})</h3><div style="margin-top:10px">${Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([p,n])=>`<span class="tag b">${esc(p)} · ${n}</span>`).join("")}</div></div>`}
+  const pct=v=>v==null?"":String(v).replace(".",",")+"%";
+  const rows=C.map((c,i)=>{const [st,sc]=ST2[c.status]||[c.status,"b"],voteOk=canVote&&c.status===(vr===1?"ativo":"segundo_turno"),isMine=myVote===c.id;
+    return `<div style="cursor:${c.character_id?"pointer":"default"}" ${c.character_id?`data-cc="${c.character_id}"`:""}><div class="num" style="width:${String(c.number).length>3?62:46}px;height:40px;font-size:.95rem">${c.number}</div><div style="flex:1;min-width:0"><b>${esc(c.name)}</b>${c.is_npc?"":` <span class="tag">Jogador</span>`}<div class="muted">${esc(c.party_acronym||"")}${c.vice_name?" · vice "+esc(c.vice_name):""}</div></div>
+    <div style="text-align:right;min-width:90px">${c.votes2!=null?`<b>${pct(c.pct2)}</b><div class="muted">${nfmt(c.votes2)} (2º t.)</div>`:c.votes1!=null?`<b>${pct(c.pct1)}</b><div class="muted">${nfmt(c.votes1)} votos</div>`:""}<span class="tag ${sc}" style="margin-top:4px">${st}</span></div>
+    ${voteOk?`<button class="${isMine?"sec":""}" data-vote="${c.id}" style="flex:none">${isMine?"✔ Seu voto":"Votar"}</button>`:""}</div>`}).join("");
+  view(header("",()=>officeView(office,g.year),"elec")+pageH(`${OFF_L[office]} · ${esc(name)}`,`Eleições ${g.year} · ${PH2[ph]}${seats?` · ${seats} vaga(s)`:""}`)+
+    (ph==="apuracao"?`<div class="card" id="livebox" style="margin-bottom:14px"></div>`:"")+partyBox+
+    `<div class="card list scrollbox">${rows||empty(f.seeded?"Nenhum candidato.":"Os candidatos aparecem a partir das convenções ("+fdt(g.calendar.convencoes)+").")}</div>`+
+    (canVote?`<div class="acts" style="margin-top:12px"><button class="sec" id="vb">Votar em branco</button></div>`:""));
+  bindHeader();
+  if($("#livebox"))liveBlock($("#livebox"),office,scope,name);
+  document.querySelectorAll("[data-cc]").forEach(x=>x.onclick=()=>openChar(x.dataset.cc));
+  const vote=async(cid,b)=>{if(b)b.disabled=true;const x=await SB.rpc("cast_vote_office",{p_world:world.id,p_office:office,p_candidate:cid});if(x.error){if(b)b.disabled=false;return toast(x.error.message)}toast(x.data.msg,true);
+    const r=await SB.rpc("elections_general",{p_world:world.id,p_year:g.year});scopeView(office,scope,r.data||g)};
+  document.querySelectorAll("[data-vote]").forEach(b=>b.onclick=e=>{e.stopPropagation();vote(b.dataset.vote,b)});
+  if($("#vb"))$("#vb").onclick=()=>vote(null,$("#vb"));
+}
+
+/* ----- Apuração ao vivo ----- */
+async function liveBlock(el,office,scope,label){
+  const tick=async()=>{if(!document.body.contains(el))return clearInterval(el._t);
+    const r=await SB.rpc("election_live",{p_world:world.id,p_office:office,p_scope:scope||null});
+    if(r.error){el.innerHTML=`<p class="muted">${esc(r.error.message)}</p>`;return}
+    const d=r.data;if(!d.live){el.innerHTML=`<p class="muted">Sem apuração em andamento para ${OFF_L[office].toLowerCase()}${label?" em "+esc(label):""} agora.</p>`;return}
+    const tot=d.total||0,L=d.candidates.slice(0,PROPO(office)?30:12);
+    el.innerHTML=`<div class="mh"><h3>🔵 Ao vivo · ${OFF_L[office]}${label?" · "+esc(label):""} · ${d.round}º turno</h3><b>${String(d.progress).replace(".",",")}% apurado</b></div><div class="mbar" style="height:10px;margin:8px 0 12px"><i style="width:${d.progress}%;background:linear-gradient(90deg,#3b82f6,#60a5fa);animation:none"></i></div>
+    ${L.map((c,i)=>{const p=tot?100*c.votes/tot:0;return `<div class="mrow"><div class="mh"><span><b>${c.number}</b> ${esc(c.name)} <span class="muted">${esc(c.party||"")}</span></span><b>${p.toFixed(2).replace(".",",")}%</b></div><div class="mbar"><i style="width:${p}%;background:${PAL[i%PAL.length]};animation:none"></i></div><span class="muted" style="font-size:.78rem">${nfmt(c.votes)} votos</span></div>`}).join("")}
+    <p class="muted" style="margin-top:8px;font-size:.78rem">Atualiza sozinho a cada 15 segundos. O resultado oficial sai no dia seguinte do jogo.</p>`};
+  clearInterval(el._t);await tick();el._t=setInterval(tick,15000);
+}
+function liveBtn(){return world&&apuracaoHoje()?`<button class="livebtn" id="livebtn">🔵 <span>Apuração em andamento</span></button>`:""}
+async function openLiveDrawer(){
+  if(window.innerWidth<900){GO.elec();return}
+  let d=$("#livedrawer");if(d){clearInterval(d.querySelector("#ldbox")?._t);d.remove();return}
+  const y=elCycle(gameISO()),offs=y%4===2?["presidente","governador","senador","deputado_federal","deputado_estadual"]:["prefeito","vereador"];
+  await loadCities();
+  d=document.createElement("div");d.id="livedrawer";d.className="livedrawer";
+  const myCity=me&&(CITIES.find(c=>c.ibge_id===me.city_ibge_id));
+  d.innerHTML=`<div class="mh" style="margin-bottom:10px"><h3>🔵 Apuração ao vivo</h3><button class="sec" id="ldx" style="padding:4px 10px">✕</button></div>
+   <div class="row" style="gap:8px"><select id="ldo">${offs.map(o=>`<option value="${o}">${OFF_L[o]}</option>`).join("")}</select><select id="lds"></select></div><div id="ldbox" style="margin-top:12px"></div>`;
+  document.body.appendChild(d);
+  const fillScope=()=>{const o=$("#ldo").value;let opts="";
+    if(o==="presidente")opts=`<option value="BR">Brasil</option>`+(states||[]).map(s=>`<option value="${s.uf.trim()}">${esc(s.name)}</option>`).join("");
+    else if(MUNI(o))opts=(myCity?`<option value="${myCity.ibge_id}">${esc(myCity.name)} (sua cidade)</option>`:"")+CITIES.slice(0,100).map(c=>`<option value="${c.ibge_id}">${esc(c.name)} (${c.uf})</option>`).join("");
+    else opts=(states||[]).map(s=>`<option value="${s.uf.trim()}" ${me&&s.uf.trim()===me.state_uf?"selected":""}>${esc(s.name)}</option>`).join("");
+    $("#lds").innerHTML=opts;show()};
+  const show=()=>{const o=$("#ldo").value,s=$("#lds").value,t=$("#lds").selectedOptions[0]?.textContent||"";liveBlock($("#ldbox"),o,s,t)};
+  $("#ldo").onchange=fillScope;$("#lds").onchange=show;$("#ldx").onclick=()=>{clearInterval($("#ldbox")._t);d.remove()};
+  fillScope();
 }
 
 /* ----- Amigos e aliados ----- */
