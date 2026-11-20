@@ -144,6 +144,7 @@ input,select,textarea{transition:border-color .2s,box-shadow .2s}
 .livedrawer{position:fixed;top:0;left:0;bottom:0;width:390px;max-width:92vw;z-index:70;background:#070b16f2;backdrop-filter:blur(10px);border-right:1px solid #3b82f6aa;padding:18px;overflow-y:auto;animation:slidein .35s ease both;box-shadow:12px 0 40px #0008}
 @keyframes slidein{from{transform:translateX(-100%)}to{transform:none}}
 .scrollbox{max-height:68vh;overflow-y:auto}.ufbtn{cursor:pointer;transition:border-color .2s}.ufbtn:hover,.list>div.mine,.ufbtn.mine{border-color:#18c78b}
+.study p{margin:0 0 14px;line-height:1.65}.opt{display:block;padding:7px 0;cursor:pointer}.opt input{width:auto;margin-right:8px}
 </style>
 </head>
 <body>
@@ -339,7 +340,9 @@ const ACT={
  doacao:["🤝","Pedir doações","Arrecade com quem apoia você. Poucos apoiadores = risco de constrangimento.","Depende de apoiadores e reputação",3],
  evento:["🎤","Apresentação / evento","Palestra, show ou ato público. Pode lucrar ou fracassar.","Custa R$ 80 · lucro, apoio e reputação variam",7]};
 const cdMs=d=>d*Number(world.year_real_days)/365*864e5,cdTxt=d=>{const m=Math.round(cdMs(d)/6e4);return m<60?m+" min":(m/60).toFixed(m<600?1:0).replace(".",",")+" h"};
-const actPanel=()=>`<h3 style="margin:28px 0 12px">Ações do cidadão</h3><div class="grid">${Object.entries(ACT).map(([k,a])=>`<div class="stat"><b>${a[0]} ${a[1]}</b><span>${a[2]}</span><div class="muted" style="margin:6px 0 4px">${a[3]}</div><div class="muted" style="margin-bottom:10px">Recarga: ${a[4]===1?"1 dia":a[4]===7?"1 semana":a[4]+" dias"} de jogo (~${cdTxt(a[4])})</div><button data-act="${k}" style="width:100%">Executar</button></div>`).join("")}</div>`;
+const PERL={1:"todo dia",2:"a cada 2 dias",3:"a cada 3 dias",7:"toda semana"};
+function lockBtn(b,v){const left=new Date(v.next_at)-Date.now();b.disabled=true;b.textContent=`Libera em ${fdt(v.next_date).slice(0,5)} (~${left>36e5?(left/36e5).toFixed(1).replace(".",",")+" h":Math.max(1,Math.ceil(left/6e4))+" min"})`}
+const actPanel=()=>`<h3 style="margin:28px 0 12px">Ações do cidadão</h3><div class="grid">${Object.entries(ACT).map(([k,a])=>`<div class="stat"><b>${a[0]} ${a[1]}</b><span>${a[2]}</span><div class="muted" style="margin:6px 0 4px">${a[3]}</div><div class="muted" style="margin-bottom:10px">Libera ${PERL[a[4]]} no jogo</div><button data-act="${k}" style="width:100%">Executar</button></div>`).join("")}</div>`;
 async function bindActions(){
   document.querySelectorAll("[data-act]").forEach(b=>b.onclick=async()=>{
     b.disabled=true;
@@ -347,14 +350,8 @@ async function bindActions(){
     if(r.error){b.disabled=false;return toast(r.error.message)}
     me=r.data.character;toast(r.data.msg,true);profile(me);
   });
-  const {data}=await SB.from("action_log").select("action,created_at").eq("character_id",me.id).gte("created_at",new Date(Date.now()-cdMs(7)).toISOString());
-  const seen={};
-  (data||[]).sort((x,y)=>new Date(y.created_at)-new Date(x.created_at)).forEach(l=>{
-    if(seen[l.action]||!ACT[l.action])return;seen[l.action]=1;
-    const left=cdMs(ACT[l.action][4])-(Date.now()-new Date(l.created_at));
-    const b=document.querySelector(`[data-act="${l.action}"]`);
-    if(b&&left>0){b.disabled=true;b.textContent=`Disponível em ${Math.max(1,Math.ceil(left/6e4))} min`}
-  });
+  const {data}=await SB.rpc("action_status",{p_world:world.id});
+  Object.entries(data||{}).forEach(([k,v])=>{const b=document.querySelector(`[data-act="${k}"]`);if(b&&!v.available)lockBtn(b,v)});
 }
 
 /* ---------- FINANÇAS ---------- */
@@ -602,7 +599,7 @@ async function myPartyView(){
   const mem=W.pm.find(x=>x.character_id===me.id),isPres=mem.role==="presidente",isRev=isPres||mem.role==="avaliador";
   const pend=isRev?W.apps.filter(a=>a.party_id===p.id&&a.status==="pendente_lider"&&a.character_id!==me.id):[];
   const total=W.pm.filter(x=>x.party_id===p.id).length+W.npc.filter(x=>x.party_id===p.id).length;
-  view(header("",null,"myparty")+pageH(`${esc(p.acronym)} · ${esc(p.name)}`,`${esc(IDEO[p.ideology])} · ${p.number?"nº "+p.number:"em formação"} · seu cargo: ${ROLE[mem.role]}`,`<button class="sec" id="a1">📣 Militar (R$ 50)</button><button class="sec" id="a2">💸 Contribuir (R$ 200)</button><button class="dng" id="pl">Sair do partido</button>`)+
+  view(header("",null,"myparty")+pageH(`${esc(p.acronym)} · ${esc(p.name)}`,`${esc(IDEO[p.ideology])} · ${p.number?"nº "+p.number:"em formação"} · seu cargo: ${ROLE[mem.role]}`,`<button class="sec" id="a1" title="Libera a cada 2 dias no jogo">📣 Militar (R$ 50)</button><button class="sec" id="a2" title="Libera toda semana no jogo">💸 Contribuir (R$ 200)</button><button class="dng" id="pl">Sair do partido</button>`)+
   `<div class="stats"><div class="stat"><b>${mem.collab}/100</b><span>Sua colaboração</span>${barv(mem.collab)}</div><div class="stat"><b>${total}</b><span>Integrantes</span></div><div class="stat"><b>${esc(p.status==="em_formacao"?"Em formação":"Registrado")}</b><span>Situação</span></div>${isPres&&!p.is_real?`<div class="stat"><b>${brl(800)}</b><span>Manutenção por mês</span></div>`:""}</div>
   ${mem.collab<30?`<div class="card" style="margin-top:18px;border-color:var(--r)">⚠️ Sua colaboração está baixa. Quem chega a zero é expulso do partido. Milite, contribua ou organize manifestações.</div>`:`<p class="muted" style="margin-top:12px">A colaboração cai com o tempo. Militar, contribuir e participar de manifestações mantêm você ativo no partido.</p>`}
   ${pend.length?`<h3 style="margin:30px 0 14px">Pedidos de filiação (${pend.length})</h3><div class="card list">${pend.map(a=>`<div style="cursor:default;flex-wrap:wrap" data-c="${a.character_id}">${avatar(W.ch[a.character_id]||{full_name:"?"})}<div style="flex:1;min-width:240px"><b>${esc(W.ch[a.character_id]?.full_name||"Jogador")}</b>${W.ch[a.character_id]?uname(W.ch[a.character_id]):""}<div style="margin-top:6px">${esc(a.justification||"")}</div></div><button data-ap="${a.id}">Aprovar</button><button class="dng" data-rf="${a.id}">Recusar</button></div>`).join("")}</div>`:""}
@@ -610,6 +607,7 @@ async function myPartyView(){
   bindHeader();bindRows();
   const pa=async k=>{const r=await SB.rpc("party_action",{p_world:world.id,p_kind:k});if(r.error)return toast(r.error.message);me=r.data.character;toast(r.data.msg,true);myPartyView()};
   $("#a1").onclick=()=>pa("militar");$("#a2").onclick=()=>pa("contribuir");
+  SB.rpc("action_status",{p_world:world.id}).then(({data})=>{if(!data)return;if(data.p_militar&&!data.p_militar.available&&$("#a1"))lockBtn($("#a1"),data.p_militar);if(data.p_contribuir&&!data.p_contribuir.available&&$("#a2"))lockBtn($("#a2"),data.p_contribuir)});
   $("#pl").onclick=async()=>{if(await act("leave_party",{p_world:world.id},"Você saiu do partido."))partiesView()};
   const stop=(sel,fn)=>document.querySelectorAll(sel).forEach(b=>b.onclick=e=>{e.stopPropagation();fn(b)});
   stop("[data-ap]",async b=>{if(await act("party_review",{p_app:b.dataset.ap,p_approve:true,p_note:null},"Filiação aprovada!"))myPartyView()});
@@ -767,8 +765,8 @@ async function electionsView(){
   // resultado por estado
   const mRounds=[1,2].filter(r=>(o.results||[]).some(x=>x.round===r));
   const byState=mRounds.length?`<div style="margin-top:30px">${mapHTML(mRounds)}</div>`:"";
-  view(header("",null,"elec")+pageH(`Eleições ${e.year} · Presidência`,`${PH[ph]} · data do jogo: ${fdt(gd)}`)+elecTabs("presidente")+pres+timeline+(ph==="apuracao"?`<div class="card" id="livebox" style="margin-bottom:18px"></div>`:"")+panel+votePanel+candBlock+byState);
-  bindHeader();bindElecTabs();if($("#livebox"))liveBlock($("#livebox"),"presidente","BR","Brasil");
+  view(header("",null,"elec")+pageH(`Eleições ${e.year} · Presidência`,`${PH[ph]} · data do jogo: ${fdt(gd)}`)+elecTabs("presidente")+pres+timeline+(ph==="apuracao"?`<div class="card" id="livebox" style="margin-bottom:18px"></div>`:"")+panel+votePanel+(e.npcs_seeded&&!e.inaugurated?`<div class="card" id="debbox" style="margin-top:18px"></div>`:"")+candBlock+byState);
+  bindHeader();bindElecTabs();if($("#livebox"))liveBlock($("#livebox"),"presidente","BR","Brasil");if($("#debbox"))debatesCard($("#debbox"),"presidente","BR",electionsView);
   if(mRounds.length)bindMap(o.results,C,mRounds);
   if($("#vp"))$("#vp").onclick=()=>openChar(o.president.character_id);
   document.querySelectorAll("[data-cc]").forEach(x=>x.onclick=()=>openChar(x.dataset.cc));
@@ -876,8 +874,8 @@ function officePhase(g,o){const f=(g.offices||{})[o],c=g.calendar,gd=g.game_date
 const PH2={pre:"Pré-campanha",convencoes:"Convenções partidárias",campanha:"Campanha do 1º turno",apuracao:"🔵 Apuração em andamento",segundo_turno:"Campanha do 2º turno",apurada:"Resultado publicado",encerrada:"Mandatos iniciados",sem:"Sem eleição neste ano"};
 function elecTabs(cur,g){const kind=g?g.kind:(elCycle(gameISO())%4===2?"geral":"municipal");
   const offs=kind==="geral"?["presidente","governador","senador","deputado_federal","deputado_estadual"]:["presidente","prefeito","vereador"];
-  return `<div class="subt">${offs.map(o=>`<button class="${o===cur?"":"sec"}" data-off="${o}">${OFF[o]}</button>`).join("")}</div>`}
-function bindElecTabs(year){document.querySelectorAll("[data-off]").forEach(b=>b.onclick=()=>b.dataset.off==="presidente"?electionsView():officeView(b.dataset.off,year))}
+  return `<div class="subt">${offs.map(o=>`<button class="${o===cur?"":"sec"}" data-off="${o}">${OFF[o]}</button>`).join("")}<button class="${cur==="estudos"?"":"sec"}" data-study="1">📚 Estudos</button></div>`}
+function bindElecTabs(year){document.querySelectorAll("[data-off]").forEach(b=>b.onclick=()=>b.dataset.off==="presidente"?electionsView():officeView(b.dataset.off,year));document.querySelectorAll("[data-study]").forEach(b=>b.onclick=studyView)}
 const REQ={governador:[5000,65],senador:[5000,65],deputado_federal:[1500,55],deputado_estadual:[800,50],prefeito:["0,2% dos eleitores da cidade",55],vereador:["0,03% dos eleitores da cidade",40]};
 
 async function officeView(office,year){
@@ -916,7 +914,7 @@ async function officeView(office,year){
   // urna
   const vr=ph==="campanha"?1:ph==="segundo_turno"?2:null,myVote=g.my_votes?g.my_votes[office+"_"+vr]:undefined;
   const urna=vr&&myScope?`<div class="card" style="margin-top:18px"><h3>🗳️ Sua urna — ${OFF_L[office]} (${vr}º turno)</h3><p class="muted" style="margin-top:6px">Você vota em ${esc(myScopeName)}. ${myVote!==undefined?(myVote?"Voto registrado. Você pode mudar até a apuração.":"Você votou em branco."):"Você ainda não votou."}</p><div class="acts" style="margin-top:12px;justify-content:flex-start"><button id="gomy">Ver candidatos e votar</button><button class="sec" id="vb">Votar em branco</button></div></div>`:"";
-  const live=ph==="apuracao"&&myScope?`<div class="card" style="margin-top:18px" id="livebox"></div>`:"";
+  const live=(ph==="apuracao"&&myScope?`<div class="card" style="margin-top:18px" id="livebox"></div>`:"")+(DEB_OFF.includes(office)&&y===g.cycle&&f.seeded&&myScope?`<div class="card" style="margin-top:18px" id="debbox"></div>`:"");
   // lista de estados ou cidades
   let list="";
   if(muni){
@@ -937,6 +935,7 @@ async function officeView(office,year){
   if($("#vb"))$("#vb").onclick=()=>run("cast_vote_office",{p_office:office,p_candidate:null},$("#vb"));
   if($("#gomy"))$("#gomy").onclick=()=>scopeView(office,myScope,g);
   if($("#livebox"))liveBlock($("#livebox"),office,myScope,myScopeName);
+  if($("#debbox"))debatesCard($("#debbox"),office,myScope,()=>officeView(office,year));
   document.querySelectorAll("[data-sc]").forEach(x=>x.onclick=()=>scopeView(office,x.dataset.sc,g));
   if(muni){const draw=()=>{const q=($("#cq").value||"").toLowerCase(),u=$("#cu").value;const L=CITIES.filter(c=>(!u||c.uf===u)&&(!q||c.name.toLowerCase().includes(q))).slice(0,150);
       $("#clist").innerHTML=L.map(c=>`<div data-ci="${c.ibge_id}" class="${String(c.ibge_id)===myScope?"mine":""}"><div style="flex:1"><b>${esc(c.name)}</b> <span class="muted">${c.uf}</span><div class="muted">${nfmt(c.voters)} eleitores · ${c.council_seats} vereadores${c.voters>200000?" · prefeito com 2º turno":""}</div></div><span class="muted">›</span></div>`).join("")||empty("Nenhuma cidade encontrada.");
@@ -963,11 +962,12 @@ async function scopeView(office,scope,g){
     <div style="text-align:right;min-width:90px">${c.votes2!=null?`<b>${pct(c.pct2)}</b><div class="muted">${nfmt(c.votes2)} (2º t.)</div>`:c.votes1!=null?`<b>${pct(c.pct1)}</b><div class="muted">${nfmt(c.votes1)} votos</div>`:""}<span class="tag ${sc}" style="margin-top:4px">${st}</span></div>
     ${voteOk?`<button class="${isMine?"sec":""}" data-vote="${c.id}" style="flex:none">${isMine?"✔ Seu voto":"Votar"}</button>`:""}</div>`}).join("");
   view(header("",()=>officeView(office,g.year),"elec")+pageH(`${OFF_L[office]} · ${esc(name)}`,`Eleições ${g.year} · ${PH2[ph]}${seats?` · ${seats} vaga(s)`:""}`)+
-    (ph==="apuracao"?`<div class="card" id="livebox" style="margin-bottom:14px"></div>`:"")+partyBox+
+    (ph==="apuracao"?`<div class="card" id="livebox" style="margin-bottom:14px"></div>`:"")+(DEB_OFF.includes(office)&&g.year===g.cycle&&f.seeded?`<div class="card" id="debbox" style="margin-bottom:14px"></div>`:"")+partyBox+
     `<div class="card list scrollbox">${rows||empty(f.seeded?"Nenhum candidato.":"Os candidatos aparecem a partir das convenções ("+fdt(g.calendar.convencoes)+").")}</div>`+
     (canVote?`<div class="acts" style="margin-top:12px"><button class="sec" id="vb">Votar em branco</button></div>`:""));
   bindHeader();
   if($("#livebox"))liveBlock($("#livebox"),office,scope,name);
+  if($("#debbox"))debatesCard($("#debbox"),office,scope,()=>scopeView(office,scope,g));
   document.querySelectorAll("[data-cc]").forEach(x=>x.onclick=()=>openChar(x.dataset.cc));
   const vote=async(cid,b)=>{if(b)b.disabled=true;const x=await SB.rpc("cast_vote_office",{p_world:world.id,p_office:office,p_candidate:cid});if(x.error){if(b)b.disabled=false;return toast(x.error.message)}toast(x.data.msg,true);
     const r=await SB.rpc("elections_general",{p_world:world.id,p_year:g.year});scopeView(office,scope,r.data||g)};
@@ -1006,6 +1006,82 @@ async function openLiveDrawer(){
   const show=()=>{const o=$("#ldo").value,s=$("#lds").value,t=$("#lds").selectedOptions[0]?.textContent||"";liveBlock($("#ldbox"),o,s,t)};
   $("#ldo").onchange=fillScope;$("#lds").onchange=show;$("#ldx").onclick=()=>{clearInterval($("#ldbox")._t);d.remove()};
   fillScope();
+}
+
+/* ----- Debates e centro de estudos ----- */
+const DEB_OFF=["presidente","governador","senador","prefeito"];
+const stars=n=>"★".repeat(n)+"☆".repeat(3-n);
+const DNAME={1:"1º debate",2:"2º debate",3:"Debate do 2º turno"};
+const VCLS={"Boa proposta":"","Fora da sua competência":"b","Impopular":"b","Impraticável":"b","Proposta ruim":"b"};
+async function debatesCard(el,office,scope,back){
+  if(!el)return;
+  if(!DEB_OFF.includes(office)){el.remove();return}
+  const r=await SB.rpc("debate_get",{p_world:world.id,p_office:office,p_scope:scope||null});
+  if(r.error){el.innerHTML=`<p class="muted">${esc(r.error.message)}</p>`;return}
+  const D=r.data.debates||[];
+  if(!D.length){el.innerHTML=`<h3>🎙️ Debates</h3><p class="muted" style="margin-top:6px">${esc(r.data.note||"Ainda não há debates.")}</p>`;return}
+  el.innerHTML=`<h3>🎙️ Debates · ${OFF_L[office]}${r.data.scope&&r.data.scope!=="BR"?" · "+esc(MUNI(office)?((CITIES||[]).find(c=>String(c.ibge_id)===r.data.scope)||{}).name||r.data.scope:stName(r.data.scope)):""}</h3>`+
+   D.map(d=>{const st=d.status==="aberto"?`<span class="tag">Aberto</span>`:d.status==="futuro"?`<span class="tag b">Em breve</span>`:`<span class="tag b">Encerrado</span>`;
+     const ent=(d.entries||[]).slice(0,6).map((e,i)=>`<div class="mh" style="font-size:.86rem;margin-top:4px"><span>${i+1}º ${esc(e.name)} <span class="muted">${esc(e.party||"")}</span>${e.is_npc?"":` <span class="tag">Jogador</span>`}</span><b>${String(e.score).replace(".",",")}</b></div>`).join("");
+     return `<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><div class="mh"><b>${DNAME[d.num]} ${st}</b><span class="muted">${fdt(d.opens)} a ${fdt(d.closes)}</span></div>
+     ${d.theme_title?`<p class="muted" style="margin-top:4px">Tema: <b>${esc(d.theme_title)}</b></p>`:""}${ent?`<div style="margin-top:6px">${ent}</div>`:""}
+     ${d.can_participate?`<div class="acts" style="margin-top:10px;justify-content:flex-start"><button data-deb="${d.num}">🎙️ Participar do debate</button></div>`:""}</div>`}).join("");
+  el.querySelectorAll("[data-deb]").forEach(b=>b.onclick=()=>debateView(office,D.find(x=>String(x.num)===b.dataset.deb),back));
+}
+function debateView(office,d,back){
+  let sel=[];
+  const draw=()=>{
+    view(header("",back,"elec")+pageH(`${DNAME[d.num]} · ${OFF_L[office]}`,`Tema: ${esc(d.theme_title)} · aberto até ${fdt(d.closes)}`)+
+     `<div class="card"><p>Escolha <b>até 3 propostas</b> para defender no debate. Algumas são boas, outras impopulares, impraticáveis ou ruins, e uma proposta boa pode estar fora da competência do cargo.</p>
+     <p class="muted" style="margin-top:8px">Seu estudo neste tema: <b style="color:var(--y)">${stars(d.study_level)}</b> (cada nível vale +1 ponto). ${d.study_level<3?`<a href="#" id="gost">Estudar antes de debater</a>`:""}</p></div>
+     <div class="grid wide" style="margin-top:16px">${d.props.map(p=>`<div class="card pcard ${sel.includes(p.id)?"me":""}" data-pp="${p.id}" style="cursor:pointer"><div class="mh"><span>${esc(p.text)}</span><b style="font-size:1.3rem">${sel.includes(p.id)?"✔":"○"}</b></div></div>`).join("")}</div>
+     <div class="acts" style="margin-top:16px"><span class="muted">${sel.length}/3 escolhidas</span><button id="dsend" ${sel.length?"":"disabled"}>Defender estas propostas</button></div>`);
+    bindHeader();
+    document.querySelectorAll("[data-pp]").forEach(x=>x.onclick=()=>{const id=+x.dataset.pp;if(sel.includes(id))sel=sel.filter(v=>v!==id);else if(sel.length<3)sel.push(id);else return toast("No máximo 3 propostas.");draw()});
+    if($("#gost"))$("#gost").onclick=e=>{e.preventDefault();studySession(d.theme,()=>debateView(office,{...d},back))};
+    $("#dsend").onclick=()=>modal("Confirmar participação",`<p class="muted" style="margin-top:8px">Você só participa uma vez deste debate. Confirmar as ${sel.length} proposta(s) escolhida(s)?</p>`,async()=>{
+      const x=await SB.rpc("debate_submit",{p_world:world.id,p_debate:d.id,p_picks:sel});if(x.error)throw x.error;debateResult(office,d,x.data,back)},"Confirmar");
+  };draw();
+}
+function debateResult(office,d,res,back){
+  const sgn=n=>(n>0?"+":"")+String(n).replace(".",",");
+  view(header("",back,"elec")+pageH(`Resultado · ${DNAME[d.num]}`,`Tema: ${esc(d.theme_title)}`)+
+   `<div class="stats"><div class="stat"><b>${String(res.score).replace(".",",")}</b><span>Sua nota</span></div><div class="stat"><b>${res.rank}º de ${res.total}</b><span>Colocação até agora</span></div><div class="stat"><b>${sgn(res.supporters)}</b><span>Apoiadores</span></div><div class="stat"><b>${sgn(res.reputation)}</b><span>Reputação</span></div></div>
+   <h3 style="margin:24px 0 12px">Como foram suas propostas</h3><div class="card list">${res.picks.map(p=>`<div style="cursor:default;align-items:flex-start"><div style="flex:1"><b>${esc(p.text)}</b><p class="muted" style="margin-top:4px">${esc(p.explain)}</p></div><div style="text-align:right"><span class="tag ${VCLS[p.verdict]??"b"}">${esc(p.verdict)}</span><div style="margin-top:4px"><b>${sgn(p.points)}</b></div></div></div>`).join("")}</div>
+   <p class="muted" style="margin-top:12px">Estudo no tema: ${stars(res.study)}. Uma boa nota também aumenta sua presença na campanha, o que pesa na votação.</p>
+   <div class="acts" style="margin-top:14px"><button id="dback">Voltar</button></div>`);
+  bindHeader();$("#dback").onclick=back;
+}
+async function studyView(){
+  view(loading("Abrindo o centro de estudos..."));
+  const [{data:T},{data:S}]=await Promise.all([SB.from("debate_themes").select("id,title,sort").order("sort"),me?SB.from("debate_study").select("theme,level,last_at").eq("character_id",me.id):{data:[]}]);
+  const lv=Object.fromEntries((S||[]).map(s=>[s.theme,s]));
+  view(header("",null,"elec")+pageH("📚 Centro de estudos","Estude os temas dos debates. Cada sessão: ler o material e acertar 2 de 3 perguntas sobe 1 nível (até 3). Um estudo por tema a cada dia do jogo.")+elecTabs("estudos")+
+   `<div class="grid wide">${(T||[]).map(t=>{const s=lv[t.id]||{level:0};return `<div class="card"><div class="mh"><b>${esc(t.title)}</b><span style="color:var(--y);font-size:1.1rem">${stars(s.level||0)}</span></div><p class="muted" style="margin-top:6px">${s.last_at?"Último estudo: "+new Date(s.last_at).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"Ainda não estudado"}</p><button data-st="${t.id}" style="margin-top:10px;width:100%">${(s.level||0)>=3?"Revisar":"Estudar"}</button></div>`}).join("")}</div>`);
+  bindHeader();bindElecTabs();
+  document.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>studySession(b.dataset.st,studyView));
+}
+async function studySession(theme,back){
+  view(loading("Separando o material..."));
+  const r=await SB.rpc("study_start",{p_world:world.id,p_theme:theme});
+  if(r.error){toast(r.error.message);return back()}
+  const s=r.data,t0=Date.now(),need=(s.min_seconds??60)*1000;
+  view(header("",back,"elec")+pageH(`📚 ${esc(s.title)}`,`Nível atual: ${stars(s.level)} · leia com atenção, o teste libera em ${s.min_seconds} segundos`)+
+   `<div class="card study">${s.material.split(/\n\s*\n/).map(p=>`<p>${esc(p)}</p>`).join("")}</div>
+   <div class="card" style="margin-top:16px" id="quiz"><p class="muted" id="qwait">⏳ O teste libera em <b id="qsec">${s.min_seconds}</b> s.</p></div>`);
+  bindHeader();
+  const tm=setInterval(()=>{const el=$("#qsec");if(!el)return clearInterval(tm);const left=Math.ceil((need-(Date.now()-t0))/1000);
+    if(left>0){el.textContent=left;return}clearInterval(tm);
+    $("#quiz").innerHTML=`<h3>Teste rápido</h3>${s.questions.map((q,i)=>`<div style="margin-top:14px"><b>${i+1}. ${esc(q.q)}</b>${q.options.map((o,j)=>`<label class="opt"><input type="radio" name="q${i}" value="${j}"> ${esc(o)}</label>`).join("")}</div>`).join("")}<div class="acts" style="margin-top:14px"><button id="qsend">Enviar respostas</button></div>`;
+    $("#qsend").onclick=async()=>{const ans=s.questions.map((q,i)=>{const c=document.querySelector(`input[name="q${i}"]:checked`);return c?+c.value:-1});
+      if(ans.includes(-1))return toast("Responda todas as perguntas.");
+      $("#qsend").disabled=true;const x=await SB.rpc("study_finish",{p_world:world.id,p_theme:theme,p_answers:ans});
+      if(x.error){$("#qsend").disabled=false;return toast(x.error.message)}
+      const f=x.data;toast(f.gained?`Você subiu para o nível ${f.level}!`:`${f.correct} de ${f.total} acertos.`,f.gained);
+      $("#quiz").innerHTML=`<h3>${f.gained?"🎉 Subiu de nível!":"Resultado"}</h3><p class="muted" style="margin-top:6px">${f.correct} de ${f.total} acertos · nível ${stars(f.level)}${!f.gained&&f.level<3?" · é preciso acertar 2 de 3. Tente de novo amanhã (no jogo).":""}</p>
+       ${f.answers.map(a=>`<div style="margin-top:10px"><b>${a.ok?"✅":"❌"} ${esc(a.q)}</b><div class="muted">Resposta certa: ${esc(a.options[a.answer])}</div></div>`).join("")}<div class="acts" style="margin-top:14px"><button id="qback">Continuar</button></div>`;
+      $("#qback").onclick=back};
+  },500);
 }
 
 /* ----- Amigos e aliados ----- */
